@@ -1,1 +1,40 @@
-<!-- index.html - Game screen -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Controller - Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Background layer -->
+        <div id="background"></div>
+        
+        <!-- Game area -->
+        <div id="game-area">
+            <!-- Crosshair -->
+            <div id="crosshair">
+                <div class="crosshair-line horizontal"></div>
+                <div class="crosshair-line vertical"></div>
+                <div class="crosshair-dot"></div>
+            </div>
+            
+            <!-- Targets will be spawned here dynamically -->
+            <div id="targets-container"></div>
+            
+            <!-- Shot effects -->
+            <div id="shot-effects"></div>
+        </div>
+        
+        <!-- UI Elements -->
+        <div id="ui-overlay">
+            <div id="score">Score: <span id="score-value">0</span></div>
+            <div id="ammo">Ammo: <span id="ammo-value">∞</span></div>
+            <div id="connection-status">Status: <span id="status-text">Wachten op controller...</span></div>
+        </div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>

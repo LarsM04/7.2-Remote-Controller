@@ -1,2 +1,215 @@
 /* Style CSS - Remote Controller */
 /* Styling for both game and controller pages */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #000;
+}
+
+/* Game Container */
+#game-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Background with image */
+#background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('images/1781.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 1;
+}
+
+/* Game Area */
+#game-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    cursor: none;
+}
+
+/* Crosshair */
+#crosshair {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    pointer-events: none;
+    z-index: 100;
+    transform: translate(-50%, -50%);
+    left: 50%;
+    top: 50%;
+}
+
+.crosshair-line {
+    position: absolute;
+    background-color: #00ff00;
+    box-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+}
+
+.crosshair-line.horizontal {
+    width: 100%;
+    height: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.crosshair-line.vertical {
+    width: 2px;
+    height: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.crosshair-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background-color: #00ff00;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+}
+
+/* Targets */
+.target {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ff4444, #cc0000);
+    border: 3px solid #ff6666;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.3);
+    cursor: none;
+    transition: transform 0.1s ease;
+}
+
+.target::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ff6666, #ff3333);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.target::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ff9999, #ff6666);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.target.hit {
+    animation: targetHit 0.3s ease-out forwards;
+}
+
+@keyframes targetHit {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+
+/* Shot Effects */
+.shot-effect {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,0,0.8), rgba(255,165,0,0.6), transparent);
+    pointer-events: none;
+    animation: shotEffect 0.3s ease-out forwards;
+}
+
+@keyframes shotEffect {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(3);
+        opacity: 0;
+    }
+}
+
+/* UI Overlay */
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    z-index: 60;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+}
+
+#score, #ammo, #connection-status {
+    background: rgba(0, 0, 0, 0.7);
+    color: #00ff00;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00ff00;
+    border: 1px solid #00ff00;
+}
+
+#score-value, #ammo-value, #status-text {
+    color: #fff;
+}
+
+#connection-status {
+    font-size: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #ui-overlay {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    #score, #ammo, #connection-status {
+        font-size: 14px;
+        padding: 8px 15px;
+    }
+}
