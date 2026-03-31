@@ -69,10 +69,20 @@ wss.on('connection', (ws) => {
                         clients.game = ws;
                         console.log('Game client registered');
                         ws.send(JSON.stringify({ type: 'registered', role: 'game' }));
+                        
+                        // If controller is already connected, notify game
+                        if (clients.controller) {
+                            ws.send(JSON.stringify({ type: 'controller_connected' }));
+                        }
                     } else if (data.role === 'controller') {
                         clients.controller = ws;
                         console.log('Controller client registered');
                         ws.send(JSON.stringify({ type: 'registered', role: 'controller' }));
+                        
+                        // Notify game that controller has connected
+                        if (clients.game) {
+                            clients.game.send(JSON.stringify({ type: 'controller_connected' }));
+                        }
                     }
                     break;
                     
@@ -92,6 +102,15 @@ wss.on('connection', (ws) => {
                     if (clients.game && ws === clients.controller) {
                         clients.game.send(JSON.stringify({
                             type: 'shoot'
+                        }));
+                    }
+                    break;
+                    
+                case 'reset':
+                    // Forward reset command to game
+                    if (clients.game && ws === clients.controller) {
+                        clients.game.send(JSON.stringify({
+                            type: 'reset'
                         }));
                     }
                     break;
@@ -124,6 +143,11 @@ wss.on('connection', (ws) => {
         } else if (ws === clients.controller) {
             clients.controller = null;
             console.log('Controller client disconnected');
+            
+            // Notify game that controller has disconnected
+            if (clients.game) {
+                clients.game.send(JSON.stringify({ type: 'controller_disconnected' }));
+            }
         }
     });
     

@@ -1,0 +1,198 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+body {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
+}
+
+#controller-container {
+    width: 100%;
+    max-width: 400px;
+    height: 100vh;
+    max-height: 800px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 30px 20px;
+    position: relative;
+}
+
+#title {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    margin-top: 20px;
+}
+
+#joystick-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+#joystick-base {
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, #2a2a4a 0%, #1a1a2e 100%);
+    border-radius: 50%;
+    border: 3px solid #3a3a5a;
+    box-shadow: 
+        0 0 20px rgba(0, 0, 0, 0.5),
+        inset 0 0 30px rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+#joystick-stick {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #4a4a6a 0%, #2a2a4a 100%);
+    border-radius: 50%;
+    border: 2px solid #5a5a7a;
+    box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.4),
+        inset 0 2px 5px rgba(255, 255, 255, 0.1);
+    position: absolute;
+    cursor: grab;
+    transition: transform 0.1s ease-out;
+}
+
+#joystick-stick:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+#shoot-btn {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, #ff4757 0%, #c0392b 100%);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 
+        0 6px 20px rgba(255, 71, 87, 0.4),
+        0 2px 10px rgba(0, 0, 0, 0.3),
+        inset 0 2px 5px rgba(255, 255, 255, 0.2);
+    transition: all 0.1s ease;
+    margin-bottom: 20px;
+}
+
+#shoot-btn:active {
+    transform: scale(0.95);
+    box-shadow: 
+        0 2px 10px rgba(255, 71, 87, 0.3),
+        0 1px 5px rgba(0, 0, 0, 0.2),
+        inset 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+#reset-btn {
+    width: 100px;
+    height: 40px;
+    background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
+    border: none;
+    border-radius: 20px;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.3),
+        inset 0 1px 3px rgba(255, 255, 255, 0.1);
+    transition: all 0.1s ease;
+    margin-bottom: 20px;
+}
+
+#reset-btn:active {
+    transform: scale(0.95);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.2),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+#connection-status {
+    color: #888;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    border: 1px solid #333;
+}
+
+/* Responsive adjustments */
+@media (max-width: 400px) {
+    #title {
+        font-size: 20px;
+        letter-spacing: 2px;
+    }
+    
+    #joystick-base {
+        width: 180px;
+        height: 180px;
+    }
+    
+    #joystick-stick {
+        width: 70px;
+        height: 70px;
+    }
+    
+    #shoot-btn {
+        width: 100px;
+        height: 100px;
+        font-size: 16px;
+    }
+}
+
+@media (max-height: 700px) {
+    #controller-container {
+        padding: 20px 15px;
+    }
+    
+    #title {
+        font-size: 18px;
+        margin-top: 10px;
+    }
+    
+    #joystick-base {
+        width: 160px;
+        height: 160px;
+    }
+    
+    #joystick-stick {
+        width: 60px;
+        height: 60px;
+    }
+    
+    #shoot-btn {
+        width: 90px;
+        height: 90px;
+        font-size: 14px;
+    }
+}

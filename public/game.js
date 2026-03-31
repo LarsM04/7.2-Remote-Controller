@@ -101,6 +101,11 @@ class Game {
                         this.shootFromController();
                         break;
                         
+                    case 'reset':
+                        // Reset game from controller
+                        this.resetGame();
+                        break;
+                        
                     case 'status':
                         // Update status message
                         this.updateConnectionStatus(data.message);
@@ -278,8 +283,18 @@ class Game {
     
     // Method to update crosshair from phone controller
     updateCrosshairFromController(x, y) {
-        this.crosshairX = x;
-        this.crosshairY = y;
+        // Convert normalized values (-1 to 1) to screen coordinates
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const maxOffset = Math.min(window.innerWidth, window.innerHeight) / 3;
+        
+        this.crosshairX = centerX + (x * maxOffset);
+        this.crosshairY = centerY + (y * maxOffset);
+        
+        // Keep crosshair within bounds
+        this.crosshairX = Math.max(0, Math.min(this.crosshairX, window.innerWidth));
+        this.crosshairY = Math.max(0, Math.min(this.crosshairY, window.innerHeight));
+        
         this.updateCrosshairPosition();
     }
     
@@ -288,13 +303,35 @@ class Game {
         this.shoot(this.crosshairX, this.crosshairY);
     }
     
+    // Method to reset game from phone controller
+    resetGame() {
+        // Reset score
+        this.score = 0;
+        this.scoreValue.textContent = this.score;
+        
+        // Clear all targets
+        this.targets.forEach(target => target.element.remove());
+        this.targets = [];
+        
+        // Reset crosshair to center
+        this.crosshairX = window.innerWidth / 2;
+        this.crosshairY = window.innerHeight / 2;
+        this.updateCrosshairPosition();
+        
+        // Restart target spawning
+        if (this.targetSpawnInterval) {
+            clearInterval(this.targetSpawnInterval);
+        }
+        this.startTargetSpawning();
+        
+        console.log('Game reset');
+    }
+    
     // Update connection status
     updateConnectionStatus(status) {
         this.statusText.textContent = status;
     }
 }
 
-// Initialize game when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.game = new Game();
-});
+// Game will be initialized by start-screen.js
+// window.game = new Game();
