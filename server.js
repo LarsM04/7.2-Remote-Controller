@@ -55,8 +55,32 @@ const clients = {
     controller: null
 };
 
+// Get local IP addresses
+function getLocalIPs() {
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+    const ips = [];
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+            // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+            if (net.family === 'IPv4' && !net.internal) {
+                ips.push(net.address);
+            }
+        }
+    }
+    return ips;
+}
+
 wss.on('connection', (ws) => {
     console.log('New client connected');
+    
+    // Send available IP addresses to client
+    const ips = getLocalIPs();
+    ws.send(JSON.stringify({
+        type: 'server_info',
+        ips: ips,
+        port: PORT
+    }));
     
     ws.on('message', (message) => {
         try {
@@ -83,6 +107,13 @@ wss.on('connection', (ws) => {
                         if (clients.game) {
                             clients.game.send(JSON.stringify({ type: 'controller_connected' }));
                         }
+                    }
+                    
+                    // Send current connection status to the newly registered client
+                    if (data.role === 'game' && clients.controller) {
+                        ws.send(JSON.stringify({ type: 'controller_connected' }));
+                    } else if (data.role === 'controller' && clients.game) {
+                        clients.game.send(JSON.stringify({ type: 'controller_connected' }));
                     }
                     break;
                     
@@ -157,8 +188,22 @@ wss.on('connection', (ws) => {
 });
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Game screen: http://localhost:${PORT}/`);
     console.log(`Controller: http://localhost:${PORT}/controller.html`);
+    
+    // Get and display local IP addresses
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+    console.log('\nAvailable on:');
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+            // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+            if (net.family === 'IPv4' && !net.internal) {
+                console.log(`  http://${net.address}:${PORT}`);
+                console.log(`  Controller: http://${net.address}:${PORT}/controller.html`);
+            }
+        }
+    }
 });

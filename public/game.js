@@ -91,6 +91,18 @@ class Game {
                         this.updateConnectionStatus('Wachten op controller...');
                         break;
                         
+                    case 'controller_connected':
+                        // Controller has connected
+                        console.log('Controller connected');
+                        this.updateConnectionStatus('Controller verbonden!');
+                        break;
+                        
+                    case 'controller_disconnected':
+                        // Controller has disconnected
+                        console.log('Controller disconnected');
+                        this.updateConnectionStatus('Controller verbroken');
+                        break;
+                        
                     case 'move':
                         // Update crosshair position from controller
                         this.updateCrosshairFromController(data.x, data.y);
@@ -333,5 +345,7 @@ class Game {
     }
 }
 
-// Game will be initialized by start-screen.js
-// window.game = new Game();
+// Initialize game when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.game = new Game();
+});

@@ -5,33 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remote Controller - Game</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body>
-    <!-- Start Screen -->
-    <div id="start-screen">
-        <div id="start-content">
-            <h1>REMOTE CONTROLLER</h1>
-            <p>Scan de QR code met je telefoon om de controller te verbinden</p>
-            
-            <div id="qr-code"></div>
-            
-            <div id="controller-url">
-                <span id="url-text"></span>
-                <button id="copy-url-btn">Kopieer</button>
-            </div>
-            
-            <div id="connection-info">
-                <div id="connection-dot"></div>
-                <span id="connection-text">Wachten op controller...</span>
-            </div>
-            
-            <button id="start-game-btn" disabled>START GAME</button>
-        </div>
-    </div>
-    
     <!-- Game Container -->
-    <div id="game-container" style="display: none;">
+    <div id="game-container">
         <!-- Background layer -->
         <div id="background"></div>
         
@@ -60,6 +37,5 @@
     </div>
     
     <script src="game.js"></script>
-    <script src="start-screen.js"></script>
 </body>
 </html>

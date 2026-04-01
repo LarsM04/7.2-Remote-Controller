@@ -35,7 +35,16 @@ class Controller {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
         
-        this.ws = new WebSocket(wsUrl);
+        console.log('Connecting to WebSocket:', wsUrl);
+        this.updateConnectionStatus('Verbinden...');
+        
+        try {
+            this.ws = new WebSocket(wsUrl);
+        } catch (e) {
+            console.error('Failed to create WebSocket:', e);
+            this.updateConnectionStatus('Verbindingsfout');
+            return;
+        }
         
         this.ws.onopen = () => {
             console.log('Connected to server');
