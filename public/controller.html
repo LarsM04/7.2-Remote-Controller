@@ -26,6 +26,13 @@
         
         <!-- Connection Status -->
         <div id="connection-status">Verbinden...</div>
+        
+        <!-- Manual Connection (fallback) -->
+        <div id="manual-connection" style="display: none;">
+            <p>Kan geen verbinding maken? Voer het IP adres van de computer in:</p>
+            <input type="text" id="server-ip" placeholder="bijv. 192.168.1.100" />
+            <button id="connect-btn">Verbind</button>
+        </div>
     </div>
     
     <script src="controller.js"></script>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Controller - Start</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .start-container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            margin: 20px auto;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+
+        .instructions {
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 4px solid #00d4ff;
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            text-align: left;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .instructions h3 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+            line-height: 1.8;
+        }
+
+        .qr-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .url-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            color: #00d4ff;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .connection-status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .status-waiting {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .status-connected {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+
+        .status-disconnected {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00d4ff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .phone-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @media (max-width: 600px) {
+            .start-container {
+                padding: 20px;
+            }
+
+            .logo {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+
+            .btn {
+                padding: 12px 24px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="start-container">
+        <div class="phone-icon">📱</div>
+        <h1 class="logo">REMOTE CONTROLLER</h1>
+        <p class="subtitle">Verbind je telefoon met de game</p>
+
+        <div class="instructions">
+            <h3>🎮 Hoe te verbinden:</h3>
+            <ol>
+                <li>Scan de QR code met je telefoon</li>
+                <li>Open de link in je browser</li>
+                <li>Gebruik de joystick om te richten</li>
+                <li>Druk op SHOOT om te schieten!</li>
+            </ol>
+        </div>
+
+        <div class="qr-container">
+            <div id="qrcode"></div>
+        </div>
+
+        <div class="url-display" id="controller-url">
+            Laden...
+        </div>
+
+        <div class="connection-status status-waiting" id="connection-status">
+            <span class="loading"></span>
+            Wachten op controller verbinding...
+        </div>
+
+        <div class="buttons">
+            <a href="index.html" class="btn btn-primary">🎮 Start Game</a>
+            <button class="btn btn-secondary" onclick="copyUrl()">📋 Kopieer URL</button>
+        </div>
+    </div>
+
+    <script>
+        // Generate QR code with controller URL
+        function generateQRCode() {
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const controllerUrl = `${protocol}//${host}/controller.html`;
+
+            // Display URL
+            document.getElementById('controller-url').textContent = controllerUrl;
+
+            // Generate QR code using qrcode-generator
+            try {
+                const qr = qrcode(0, 'M');
+                qr.addData(controllerUrl);
+                qr.make();
+                
+                // Create canvas
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const size = 200;
+                const moduleCount = qr.getModuleCount();
+                const cellSize = size / moduleCount;
+                
+                canvas.width = size;
+                canvas.height = size;
+                
+                // Draw QR code
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
+                ctx.fillStyle = '#000000';
+                
+                for (let row = 0; row < moduleCount; row++) {
+                    for (let col = 0; col < moduleCount; col++) {
+                        if (qr.isDark(row, col)) {
+                            ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                        }
+                    }
+                }
+                
+                // Add canvas to page
+                document.getElementById('qrcode').appendChild(canvas);
+                console.log('QR code generated!');
+            } catch (error) {
+                console.error('Error generating QR code:', error);
+                document.getElementById('qrcode').innerHTML = '<p style="color: red;">Fout bij genereren QR code</p>';
+            }
+        }
+
+        // Copy URL to clipboard
+        function copyUrl() {
+            const url = document.getElementById('controller-url').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL gekopieerd naar klembord!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = url;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('URL gekopieerd naar klembord!');
+            });
+        }
+
+        // Check controller connection status
+        function checkConnectionStatus() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                // Register as game client to check status
+                ws.send(JSON.stringify({
+                    type: 'register',
+                    role: 'game'
+                }));
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'controller_connected') {
+                        updateStatus('connected', '✅ Controller verbonden!');
+                    } else if (data.type === 'registered') {
+                        updateStatus('waiting', 'Wachten op controller verbinding...');
+                    }
+                } catch (e) {
+                    console.error('Error parsing message:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                updateStatus('disconnected', '❌ Verbinding verbroken');
+            };
+
+            ws.onerror = () => {
+                updateStatus('disconnected', '❌ Verbindingsfout');
+            };
+        }
+
+        function updateStatus(status, message) {
+            const statusElement = document.getElementById('connection-status');
+            statusElement.className = `connection-status status-${status}`;
+
+            if (status === 'waiting') {
+                statusElement.innerHTML = `<span class="loading"></span>${message}`;
+            } else {
+                statusElement.textContent = message;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            generateQRCode();
+            checkConnectionStatus();
+        });
+    </script>
+</body>
+</html>

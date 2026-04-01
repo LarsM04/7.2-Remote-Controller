@@ -31,9 +31,10 @@ class Controller {
         console.log('Controller initialized');
     }
     
-    connectWebSocket() {
+    connectWebSocket(customHost = null) {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}`;
+        const host = customHost || window.location.host;
+        const wsUrl = `${protocol}//${host}`;
         
         console.log('Connecting to WebSocket:', wsUrl);
         this.updateConnectionStatus('Verbinden...');
@@ -43,6 +44,7 @@ class Controller {
         } catch (e) {
             console.error('Failed to create WebSocket:', e);
             this.updateConnectionStatus('Verbindingsfout');
+            this.showManualConnection();
             return;
         }
         
@@ -89,6 +91,7 @@ class Controller {
         this.ws.onerror = (error) => {
             console.error('WebSocket error:', error);
             this.updateConnectionStatus('Verbindingsfout');
+            this.showManualConnection();
         };
     }
     
@@ -243,9 +246,49 @@ class Controller {
     updateConnectionStatus(status) {
         this.connectionStatus.textContent = status;
     }
+    
+    showManualConnection() {
+        const manualConnection = document.getElementById('manual-connection');
+        if (manualConnection) {
+            manualConnection.style.display = 'block';
+        }
+    }
+    
+    setupManualConnection() {
+        const connectBtn = document.getElementById('connect-btn');
+        const serverIp = document.getElementById('server-ip');
+        
+        if (connectBtn && serverIp) {
+            connectBtn.addEventListener('click', () => {
+                const ip = serverIp.value.trim();
+                if (ip) {
+                    // Close existing connection
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                    // Connect to new IP
+                    this.connectWebSocket(`${ip}:3000`);
+                }
+            });
+            
+            // Also connect on Enter key
+            serverIp.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    connectBtn.click();
+                }
+            });
+        }
+    }
 }
 
 // Initialize controller when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.controller = new Controller();
+    
+    // Set up manual connection after DOM is loaded
+    setTimeout(() => {
+        if (window.controller) {
+            window.controller.setupManualConnection();
+        }
+    }, 100);
 });

@@ -24,7 +24,7 @@ const mimeTypes = {
 // Create HTTP server
 const server = http.createServer((req, res) => {
     // Handle static files
-    let filePath = req.url === '/' ? '/index.html' : req.url;
+    let filePath = req.url === '/' ? '/start.html' : req.url;
     filePath = path.join(__dirname, 'public', filePath);
     
     const extname = path.extname(filePath).toLowerCase();
@@ -190,7 +190,8 @@ wss.on('connection', (ws) => {
 // Start server
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Game screen: http://localhost:${PORT}/`);
+    console.log(`Start screen: http://localhost:${PORT}/`);
+    console.log(`Game screen: http://localhost:${PORT}/index.html`);
     console.log(`Controller: http://localhost:${PORT}/controller.html`);
     
     // Get and display local IP addresses
@@ -201,7 +202,8 @@ server.listen(PORT, '0.0.0.0', () => {
         for (const net of nets[name]) {
             // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
             if (net.family === 'IPv4' && !net.internal) {
-                console.log(`  http://${net.address}:${PORT}`);
+                console.log(`  Start: http://${net.address}:${PORT}`);
+                console.log(`  Game: http://${net.address}:${PORT}/index.html`);
                 console.log(`  Controller: http://${net.address}:${PORT}/controller.html`);
             }
         }

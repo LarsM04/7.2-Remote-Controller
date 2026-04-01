@@ -146,6 +146,50 @@ body {
     border: 1px solid #333;
 }
 
+#manual-connection {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 10px;
+    text-align: center;
+}
+
+#manual-connection p {
+    color: #ffc107;
+    font-size: 12px;
+    margin-bottom: 10px;
+}
+
+#server-ip {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #333;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+#connect-btn {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #00d4ff 0%, #7b2cbf 100%);
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#connect-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+}
+
 /* Responsive adjustments */
 @media (max-width: 400px) {
     #title {
