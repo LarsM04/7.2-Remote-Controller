@@ -1,34 +1,29 @@
 // Controller Logic - Remote Controller
-// Handles joystick, shoot button, and WebSocket communication
+// Handles trackpad, shoot button, and WebSocket communication
 
 class Controller {
     constructor() {
         this.ws = null;
-        this.joystickBase = document.getElementById('joystick-base');
-        this.joystickStick = document.getElementById('joystick-stick');
+        this.trackpad = document.getElementById('trackpad');
+        this.trackpadIndicator = document.getElementById('trackpad-indicator');
         this.shootBtn = document.getElementById('shoot-btn');
         this.resetBtn = document.getElementById('reset-btn');
         this.connectionStatus = document.getElementById('connection-status');
         
-        this.joystickActive = false;
-        this.joystickCenterX = 0;
-        this.joystickCenterY = 0;
-        this.maxDistance = 60; // Maximum distance the stick can move from center
-        this.shootPressed = false; // Track if shoot button is pressed
+        this.trackpadActive = false;
+        this.lastX = 0;
+        this.lastY = 0;
+        this.sensitivity = 3;
+        this.shootInterval = null;
+        this.shootFiring = false;
         
         this.init();
     }
     
     init() {
-        // Connect to WebSocket server
         this.connectWebSocket();
-        
-        // Set up joystick controls
-        this.setupJoystick();
-        
-        // Set up button controls
+        this.setupTrackpad();
         this.setupButtons();
-        
         console.log('Controller initialized');
     }
     
@@ -53,7 +48,6 @@ class Controller {
             console.log('Connected to server');
             this.updateConnectionStatus('Verbonden');
             
-            // Register as controller client
             this.ws.send(JSON.stringify({
                 type: 'register',
                 role: 'controller'
@@ -83,7 +77,6 @@ class Controller {
             console.log('Disconnected from server');
             this.updateConnectionStatus('Verbroken');
             
-            // Try to reconnect after 3 seconds
             setTimeout(() => {
                 this.connectWebSocket();
             }, 3000);
@@ -96,146 +89,160 @@ class Controller {
         };
     }
     
-    setupJoystick() {
-        // Get joystick center position
-        this.updateJoystickCenter();
+    setupTrackpad() {
+        const getTrackpadPos = (e) => {
+            const rect = this.trackpad.getBoundingClientRect();
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+            }
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        };
         
         // Touch events for mobile
-        this.joystickStick.addEventListener('touchstart', (e) => {
+        this.trackpad.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            this.joystickActive = true;
-            this.updateJoystickCenter();
-        });
+            const pos = getTrackpadPos(e);
+            this.trackpadActive = true;
+            this.lastX = pos.x;
+            this.lastY = pos.y;
+            this.trackpad.classList.add('active');
+            this.updateIndicator(pos.x, pos.y);
+        }, { passive: false });
         
-        document.addEventListener('touchmove', (e) => {
-            if (!this.joystickActive) return;
+        this.trackpad.addEventListener('touchmove', (e) => {
             e.preventDefault();
+            if (!this.trackpadActive) return;
             
-            const touch = e.touches[0];
-            this.handleJoystickMove(touch.clientX, touch.clientY);
-        });
+            const pos = getTrackpadPos(e);
+            const deltaX = (pos.x - this.lastX) * this.sensitivity;
+            const deltaY = (pos.y - this.lastY) * this.sensitivity;
+            
+            this.sendMovement(deltaX, deltaY);
+            
+            this.lastX = pos.x;
+            this.lastY = pos.y;
+            this.updateIndicator(pos.x, pos.y);
+        }, { passive: false });
         
-        document.addEventListener('touchend', () => {
-            if (this.joystickActive) {
-                this.joystickActive = false;
-                this.resetJoystick();
-            }
-        });
-        
-        // Mouse events for testing on desktop
-        this.joystickStick.addEventListener('mousedown', (e) => {
+        this.trackpad.addEventListener('touchend', (e) => {
             e.preventDefault();
-            this.joystickActive = true;
-            this.updateJoystickCenter();
+            this.trackpadActive = false;
+            this.trackpad.classList.remove('active');
+        }, { passive: false });
+        
+        this.trackpad.addEventListener('touchcancel', (e) => {
+            this.trackpadActive = false;
+            this.trackpad.classList.remove('active');
+        });
+        
+        // Mouse events for desktop testing
+        this.trackpad.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const pos = getTrackpadPos(e);
+            this.trackpadActive = true;
+            this.lastX = pos.x;
+            this.lastY = pos.y;
+            this.trackpad.classList.add('active');
+            this.updateIndicator(pos.x, pos.y);
         });
         
         document.addEventListener('mousemove', (e) => {
-            if (!this.joystickActive) return;
-            e.preventDefault();
+            if (!this.trackpadActive) return;
             
-            this.handleJoystickMove(e.clientX, e.clientY);
+            const rect = this.trackpad.getBoundingClientRect();
+            const pos = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+            
+            const deltaX = (pos.x - this.lastX) * this.sensitivity;
+            const deltaY = (pos.y - this.lastY) * this.sensitivity;
+            
+            this.sendMovement(deltaX, deltaY);
+            
+            this.lastX = pos.x;
+            this.lastY = pos.y;
+            this.updateIndicator(pos.x, pos.y);
         });
         
         document.addEventListener('mouseup', () => {
-            if (this.joystickActive) {
-                this.joystickActive = false;
-                this.resetJoystick();
+            if (this.trackpadActive) {
+                this.trackpadActive = false;
+                this.trackpad.classList.remove('active');
             }
         });
-        
-        // Update center on window resize
-        window.addEventListener('resize', () => {
-            this.updateJoystickCenter();
-        });
     }
     
-    updateJoystickCenter() {
-        const rect = this.joystickBase.getBoundingClientRect();
-        this.joystickCenterX = rect.left + rect.width / 2;
-        this.joystickCenterY = rect.top + rect.height / 2;
+    updateIndicator(x, y) {
+        const rect = this.trackpad.getBoundingClientRect();
+        const indicatorX = Math.max(30, Math.min(x, rect.width - 30));
+        const indicatorY = Math.max(30, Math.min(y, rect.height - 30));
+        
+        this.trackpadIndicator.style.left = indicatorX + 'px';
+        this.trackpadIndicator.style.top = indicatorY + 'px';
     }
     
-    handleJoystickMove(clientX, clientY) {
-        // Reset shoot pressed state when joystick is moved
-        this.shootPressed = false;
+    sendMovement(deltaX, deltaY) {
+        const deadzone = 0.5;
+        if (Math.abs(deltaX) < deadzone && Math.abs(deltaY) < deadzone) return;
         
-        // Calculate distance from center
-        const deltaX = clientX - this.joystickCenterX;
-        const deltaY = clientY - this.joystickCenterY;
-        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-        
-        // Limit distance to maxDistance
-        let limitedX = deltaX;
-        let limitedY = deltaY;
-        
-        if (distance > this.maxDistance) {
-            limitedX = (deltaX / distance) * this.maxDistance;
-            limitedY = (deltaY / distance) * this.maxDistance;
-        }
-        
-        // Update joystick stick position
-        this.joystickStick.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
-        
-        // Apply deadzone (ignore small movements)
-        const deadzone = 10;
-        if (distance < deadzone) {
-            this.sendMovement(0, 0);
-        } else {
-            this.sendMovement(limitedX, limitedY);
-        }
-    }
-    
-    resetJoystick() {
-        // Only reset joystick if shoot button is not pressed
-        if (!this.shootPressed) {
-            // Reset joystick stick position
-            this.joystickStick.style.transform = 'translate(0, 0)';
-            
-            // Send reset movement
-            this.sendMovement(0, 0);
-        }
-        // Reset shoot pressed state
-        this.shootPressed = false;
-    }
-    
-    sendMovement(x, y) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            // Normalize values to -1 to 1 range
-            const normalizedX = x / this.maxDistance;
-            const normalizedY = y / this.maxDistance;
-            
             this.ws.send(JSON.stringify({
                 type: 'move',
-                x: normalizedX,
-                y: normalizedY
+                deltaX: deltaX,
+                deltaY: deltaY
             }));
         }
     }
     
     setupButtons() {
-        // Shoot button
-        this.shootBtn.addEventListener('touchstart', (e) => {
+        // Shoot button with auto-fire
+        const startShooting = (e) => {
             e.preventDefault();
-            this.shootPressed = true;
+            this.shootFiring = true;
+            this.shootBtn.classList.add('firing');
             this.sendShoot();
-        });
+            
+            this.shootInterval = setInterval(() => {
+                if (this.shootFiring) {
+                    this.sendShoot();
+                }
+            }, 100);
+        };
         
-        this.shootBtn.addEventListener('mousedown', (e) => {
+        const stopShooting = (e) => {
             e.preventDefault();
-            this.shootPressed = true;
-            this.sendShoot();
-        });
+            this.shootFiring = false;
+            this.shootBtn.classList.remove('firing');
+            
+            if (this.shootInterval) {
+                clearInterval(this.shootInterval);
+                this.shootInterval = null;
+            }
+        };
+        
+        this.shootBtn.addEventListener('touchstart', startShooting, { passive: false });
+        this.shootBtn.addEventListener('touchend', stopShooting, { passive: false });
+        this.shootBtn.addEventListener('touchcancel', stopShooting);
+        
+        this.shootBtn.addEventListener('mousedown', startShooting);
+        this.shootBtn.addEventListener('mouseup', stopShooting);
+        this.shootBtn.addEventListener('mouseleave', stopShooting);
         
         // Reset button
-        this.resetBtn.addEventListener('touchstart', (e) => {
+        const handleReset = (e) => {
             e.preventDefault();
             this.sendReset();
-        });
+        };
         
-        this.resetBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            this.sendReset();
-        });
+        this.resetBtn.addEventListener('touchstart', handleReset, { passive: false });
+        this.resetBtn.addEventListener('mousedown', handleReset);
     }
     
     sendShoot() {
@@ -273,16 +280,13 @@ class Controller {
             connectBtn.addEventListener('click', () => {
                 const ip = serverIp.value.trim();
                 if (ip) {
-                    // Close existing connection
                     if (this.ws) {
                         this.ws.close();
                     }
-                    // Connect to new IP
                     this.connectWebSocket(`${ip}:3000`);
                 }
             });
             
-            // Also connect on Enter key
             serverIp.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     connectBtn.click();
@@ -290,13 +294,15 @@ class Controller {
             });
         }
     }
+    
+    updateConnectionStatus(status) {
+        this.connectionStatus.textContent = status;
+    }
 }
 
-// Initialize controller when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.controller = new Controller();
     
-    // Set up manual connection after DOM is loaded
     setTimeout(() => {
         if (window.controller) {
             window.controller.setupManualConnection();

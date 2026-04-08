@@ -16,47 +16,38 @@ class Game {
         this.targets = [];
         this.targetSpawnInterval = null;
         this.ws = null;
+        this.shootCooldown = false;
+        this.autoShootEnabled = false;
         
         this.init();
     }
     
     init() {
-        // Set up event listeners
         this.setupEventListeners();
-        
-        // Connect to WebSocket server
         this.connectWebSocket();
-        
-        // Start spawning targets
         this.startTargetSpawning();
-        
-        // Update crosshair position
         this.updateCrosshairPosition();
         
         console.log('Game initialized');
     }
     
     setupEventListeners() {
-        // Mouse movement for crosshair (temporary - will be replaced by phone controller)
         this.gameArea.addEventListener('mousemove', (e) => {
             this.crosshairX = e.clientX;
             this.crosshairY = e.clientY;
             this.updateCrosshairPosition();
         });
         
-        // Click to shoot
         this.gameArea.addEventListener('click', (e) => {
             this.shoot(e.clientX, e.clientY);
         });
         
-        // Keyboard controls (for testing)
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 this.shoot(this.crosshairX, this.crosshairY);
             }
         });
         
-        // Handle window resize
         window.addEventListener('resize', () => {
             this.crosshairX = Math.min(this.crosshairX, window.innerWidth);
             this.crosshairY = Math.min(this.crosshairY, window.innerHeight);
@@ -74,7 +65,6 @@ class Game {
             console.log('Connected to server');
             this.updateConnectionStatus('Verbonden met server');
             
-            // Register as game client
             this.ws.send(JSON.stringify({
                 type: 'register',
                 role: 'game'
@@ -92,34 +82,30 @@ class Game {
                         break;
                         
                     case 'controller_connected':
-                        // Controller has connected
+                        this.autoShootEnabled = true;
                         console.log('Controller connected');
                         this.updateConnectionStatus('Controller verbonden!');
                         break;
                         
                     case 'controller_disconnected':
-                        // Controller has disconnected
+                        this.autoShootEnabled = false;
                         console.log('Controller disconnected');
                         this.updateConnectionStatus('Controller verbroken');
                         break;
                         
                     case 'move':
-                        // Update crosshair position from controller
-                        this.updateCrosshairFromController(data.x, data.y);
+                        this.updateCrosshairFromController(data.deltaX, data.deltaY);
                         break;
                         
                     case 'shoot':
-                        // Trigger shoot from controller
                         this.shootFromController();
                         break;
                         
                     case 'reset':
-                        // Reset game from controller
                         this.resetGame();
                         break;
                         
                     case 'status':
-                        // Update status message
                         this.updateConnectionStatus(data.message);
                         break;
                 }
@@ -132,7 +118,6 @@ class Game {
             console.log('Disconnected from server');
             this.updateConnectionStatus('Verbinding verbroken');
             
-            // Try to reconnect after 3 seconds
             setTimeout(() => {
                 this.connectWebSocket();
             }, 3000);
@@ -150,17 +135,21 @@ class Game {
     }
     
     shoot(x, y) {
-        // Create shot effect
+        if (this.shootCooldown) return;
+        
+        this.shootCooldown = true;
+        setTimeout(() => {
+            this.shootCooldown = false;
+        }, 80);
+        
         this.createShotEffect(x, y);
         
-        // Check if any target was hit
         const hitTarget = this.checkTargetHit(x, y);
         
         if (hitTarget) {
             this.hitTarget(hitTarget);
         }
         
-        // Play sound effect (optional)
         this.playShootSound();
     }
     
@@ -171,7 +160,6 @@ class Game {
         effect.style.top = (y - 10) + 'px';
         this.shotEffects.appendChild(effect);
         
-        // Remove effect after animation
         setTimeout(() => {
             effect.remove();
         }, 300);
@@ -184,7 +172,6 @@ class Game {
             const targetCenterY = rect.top + rect.height / 2;
             const radius = rect.width / 2;
             
-            // Check if click is within target circle
             const distance = Math.sqrt(
                 Math.pow(x - targetCenterX, 2) + 
                 Math.pow(y - targetCenterY, 2)
@@ -198,14 +185,11 @@ class Game {
     }
     
     hitTarget(target) {
-        // Add hit animation
         target.element.classList.add('hit');
         
-        // Update score
         this.score += 10;
         this.scoreValue.textContent = this.score;
         
-        // Remove target after animation
         setTimeout(() => {
             target.element.remove();
             const index = this.targets.indexOf(target);
@@ -216,12 +200,10 @@ class Game {
     }
     
     startTargetSpawning() {
-        // Spawn initial targets
         for (let i = 0; i < 3; i++) {
             setTimeout(() => this.spawnTarget(), i * 1000);
         }
         
-        // Continue spawning targets
         this.targetSpawnInterval = setInterval(() => {
             if (this.targets.length < 5) {
                 this.spawnTarget();
@@ -233,7 +215,6 @@ class Game {
         const target = document.createElement('div');
         target.className = 'target';
         
-        // Random position (avoiding edges)
         const padding = 100;
         const maxX = window.innerWidth - padding - 60;
         const maxY = window.innerHeight - padding - 60;
@@ -253,7 +234,6 @@ class Game {
         
         this.targets.push(targetObj);
         
-        // Auto-remove target after some time if not hit
         setTimeout(() => {
             if (this.targets.includes(targetObj)) {
                 target.style.opacity = '0.5';
@@ -271,7 +251,6 @@ class Game {
     }
     
     playShootSound() {
-        // Create a simple beep sound using Web Audio API
         try {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioContext.createOscillator();
@@ -289,51 +268,35 @@ class Game {
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.1);
         } catch (e) {
-            // Audio not supported
         }
     }
     
-    // Method to update crosshair from phone controller
-    updateCrosshairFromController(x, y) {
-        // Convert normalized values (-1 to 1) to screen coordinates
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        const maxOffset = Math.min(window.innerWidth, window.innerHeight) / 3;
+    updateCrosshairFromController(deltaX, deltaY) {
+        this.crosshairX += deltaX;
+        this.crosshairY += deltaY;
         
-        // this.crosshairX = centerX + (x * maxOffset);
-        // this.crosshairY = centerY + (y * maxOffset);
-        
-        // // Keep crosshair within bounds
-        // this.crosshairX = Math.max(0, Math.min(this.crosshairX, window.innerWidth));
-        // this.crosshairY = Math.max(0, Math.min(this.crosshairY, window.innerHeight));
-
-         this.crosshairX =  this.crosshairX + x*10;
-        this.crosshairY =  this.crosshairY + y*10;
+        const padding = 20;
+        this.crosshairX = Math.max(padding, Math.min(this.crosshairX, window.innerWidth - padding));
+        this.crosshairY = Math.max(padding, Math.min(this.crosshairY, window.innerHeight - padding));
         
         this.updateCrosshairPosition();
     }
     
-    // Method to trigger shoot from phone controller
     shootFromController() {
         this.shoot(this.crosshairX, this.crosshairY);
     }
     
-    // Method to reset game from phone controller
     resetGame() {
-        // Reset score
         this.score = 0;
         this.scoreValue.textContent = this.score;
         
-        // Clear all targets
         this.targets.forEach(target => target.element.remove());
         this.targets = [];
         
-        // Reset crosshair to center
         this.crosshairX = window.innerWidth / 2;
         this.crosshairY = window.innerHeight / 2;
         this.updateCrosshairPosition();
         
-        // Restart target spawning
         if (this.targetSpawnInterval) {
             clearInterval(this.targetSpawnInterval);
         }
@@ -342,13 +305,11 @@ class Game {
         console.log('Game reset');
     }
     
-    // Update connection status
     updateConnectionStatus(status) {
         this.statusText.textContent = status;
     }
 }
 
-// Initialize game when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.game = new Game();
 });
