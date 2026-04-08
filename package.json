@@ -4,8 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -15,10 +14,6 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/LarsM04/7.2-Remote-Controller/issues"
-  },
-  "homepage": "https://github.com/LarsM04/7.2-Remote-Controller#readme",
   "dependencies": {
     "ws": "^8.19.0"
   }
