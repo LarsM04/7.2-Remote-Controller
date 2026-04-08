@@ -14,6 +14,7 @@ class Controller {
         this.joystickCenterX = 0;
         this.joystickCenterY = 0;
         this.maxDistance = 60; // Maximum distance the stick can move from center
+        this.shootPressed = false; // Track if shoot button is pressed
         
         this.init();
     }
@@ -155,6 +156,9 @@ class Controller {
     }
     
     handleJoystickMove(clientX, clientY) {
+        // Reset shoot pressed state when joystick is moved
+        this.shootPressed = false;
+        
         // Calculate distance from center
         const deltaX = clientX - this.joystickCenterX;
         const deltaY = clientY - this.joystickCenterY;
@@ -182,11 +186,16 @@ class Controller {
     }
     
     resetJoystick() {
-        // Reset joystick stick position
-        this.joystickStick.style.transform = 'translate(0, 0)';
-        
-        // Send reset movement
-        this.sendMovement(0, 0);
+        // Only reset joystick if shoot button is not pressed
+        if (!this.shootPressed) {
+            // Reset joystick stick position
+            this.joystickStick.style.transform = 'translate(0, 0)';
+            
+            // Send reset movement
+            this.sendMovement(0, 0);
+        }
+        // Reset shoot pressed state
+        this.shootPressed = false;
     }
     
     sendMovement(x, y) {
@@ -207,11 +216,13 @@ class Controller {
         // Shoot button
         this.shootBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            this.shootPressed = true;
             this.sendShoot();
         });
         
         this.shootBtn.addEventListener('mousedown', (e) => {
             e.preventDefault();
+            this.shootPressed = true;
             this.sendShoot();
         });
         

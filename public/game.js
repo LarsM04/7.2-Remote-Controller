@@ -300,12 +300,15 @@ class Game {
         const centerY = window.innerHeight / 2;
         const maxOffset = Math.min(window.innerWidth, window.innerHeight) / 3;
         
-        this.crosshairX = centerX + (x * maxOffset);
-        this.crosshairY = centerY + (y * maxOffset);
+        // this.crosshairX = centerX + (x * maxOffset);
+        // this.crosshairY = centerY + (y * maxOffset);
         
-        // Keep crosshair within bounds
-        this.crosshairX = Math.max(0, Math.min(this.crosshairX, window.innerWidth));
-        this.crosshairY = Math.max(0, Math.min(this.crosshairY, window.innerHeight));
+        // // Keep crosshair within bounds
+        // this.crosshairX = Math.max(0, Math.min(this.crosshairX, window.innerWidth));
+        // this.crosshairY = Math.max(0, Math.min(this.crosshairY, window.innerHeight));
+
+         this.crosshairX =  this.crosshairX + x*10;
+        this.crosshairY =  this.crosshairY + y*10;
         
         this.updateCrosshairPosition();
     }
