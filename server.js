@@ -97,6 +97,7 @@ wss.on('connection', (ws) => {
                         // If controller is already connected, notify game
                         if (clients.controller) {
                             ws.send(JSON.stringify({ type: 'controller_connected' }));
+                            clients.controller.send(JSON.stringify({ type: 'game_connected' }));
                         }
                     } else if (data.role === 'controller') {
                         clients.controller = ws;
@@ -106,6 +107,7 @@ wss.on('connection', (ws) => {
                         // Notify game that controller has connected
                         if (clients.game) {
                             clients.game.send(JSON.stringify({ type: 'controller_connected' }));
+                            ws.send(JSON.stringify({ type: 'game_connected' }));
                         }
                     }
                     
@@ -113,35 +115,38 @@ wss.on('connection', (ws) => {
                     if (data.role === 'game' && clients.controller) {
                         ws.send(JSON.stringify({ type: 'controller_connected' }));
                     } else if (data.role === 'controller' && clients.game) {
-                        clients.game.send(JSON.stringify({ type: 'controller_connected' }));
+                        ws.send(JSON.stringify({ type: 'game_connected' }));
                     }
                     break;
                     
                 case 'move':
-                    // Forward controller movement to game
+                    console.log('Server received move:', data);
                     if (clients.game && ws === clients.controller) {
-                        clients.game.send(JSON.stringify({
-                            type: 'move',
-                            x: data.x,
-                            y: data.y
-                        }));
+                        console.log('Forwarding to game');
+                        if (data.x !== undefined && data.y !== undefined) {
+                            clients.game.send(JSON.stringify({
+                                type: 'move',
+                                x: data.x,
+                                y: data.y
+                            }));
+                        } else {
+                            clients.game.send(JSON.stringify({
+                                type: 'move',
+                                deltaX: data.deltaX,
+                                deltaY: data.deltaY
+                            }));
+                        }
+                    } else {
+                        console.log('Not forwarding - game:', !!clients.game, 'sender is controller:', ws === clients.controller);
                     }
                     break;
                     
                 case 'shoot':
-                    // Forward shoot command to game
+                    console.log('Server received shoot');
                     if (clients.game && ws === clients.controller) {
+                        console.log('Forwarding to game');
                         clients.game.send(JSON.stringify({
                             type: 'shoot'
-                        }));
-                    }
-                    break;
-                    
-                case 'reset':
-                    // Forward reset command to game
-                    if (clients.game && ws === clients.controller) {
-                        clients.game.send(JSON.stringify({
-                            type: 'reset'
                         }));
                     }
                     break;

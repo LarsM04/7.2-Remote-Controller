@@ -3,28 +3,32 @@
 
 class Controller {
     constructor() {
-        this.ws = null;
-        this.trackpad = document.getElementById('trackpad');
-        this.trackpadIndicator = document.getElementById('trackpad-indicator');
-        this.shootBtn = document.getElementById('shoot-btn');
-        this.resetBtn = document.getElementById('reset-btn');
-        this.connectionStatus = document.getElementById('connection-status');
-        
-        this.trackpadActive = false;
-        this.lastX = 0;
-        this.lastY = 0;
-        this.sensitivity = 3;
-        this.shootInterval = null;
-        this.shootFiring = false;
-        
-        this.init();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
     }
     
     init() {
+        this.trackpad = document.getElementById('trackpad');
+        this.trackpadIndicator = document.getElementById('trackpad-indicator');
+        this.shootBtn = document.getElementById('shoot-btn');
+        this.connectionStatus = document.getElementById('connection-status');
+        this.helpBtn = document.getElementById('help-btn');
+        
+        this.ws = null;
+        this.trackpadActive = false;
+        this.lastX = 0;
+        this.lastY = 0;
+        this.sensitivity = 0.3;
+        this.minDelta = 0.5;
+        this.shootInterval = null;
+        this.shootFiring = false;
+        
         this.connectWebSocket();
         this.setupTrackpad();
         this.setupButtons();
-        console.log('Controller initialized');
     }
     
     connectWebSocket(customHost = null) {
@@ -32,22 +36,12 @@ class Controller {
         const host = customHost || window.location.host;
         const wsUrl = `${protocol}//${host}`;
         
-        console.log('Connecting to WebSocket:', wsUrl);
         this.updateConnectionStatus('Verbinden...');
         
-        try {
-            this.ws = new WebSocket(wsUrl);
-        } catch (e) {
-            console.error('Failed to create WebSocket:', e);
-            this.updateConnectionStatus('Verbindingsfout');
-            this.showManualConnection();
-            return;
-        }
+        this.ws = new WebSocket(wsUrl);
         
         this.ws.onopen = () => {
-            console.log('Connected to server');
             this.updateConnectionStatus('Verbonden');
-            
             this.ws.send(JSON.stringify({
                 type: 'register',
                 role: 'controller'
@@ -57,13 +51,13 @@ class Controller {
         this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                
                 switch (data.type) {
                     case 'registered':
-                        console.log('Registered as controller');
                         this.updateConnectionStatus('Verbonden met game');
                         break;
-                        
+                    case 'game_connected':
+                        this.updateConnectionStatus('Game actief - beweeg op trackpad!');
+                        break;
                     case 'status':
                         this.updateConnectionStatus(data.message);
                         break;
@@ -74,16 +68,11 @@ class Controller {
         };
         
         this.ws.onclose = () => {
-            console.log('Disconnected from server');
             this.updateConnectionStatus('Verbroken');
-            
-            setTimeout(() => {
-                this.connectWebSocket();
-            }, 3000);
+            setTimeout(() => this.connectWebSocket(), 3000);
         };
         
         this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
             this.updateConnectionStatus('Verbindingsfout');
             this.showManualConnection();
         };
@@ -93,18 +82,11 @@ class Controller {
         const getTrackpadPos = (e) => {
             const rect = this.trackpad.getBoundingClientRect();
             if (e.touches && e.touches.length > 0) {
-                return {
-                    x: e.touches[0].clientX - rect.left,
-                    y: e.touches[0].clientY - rect.top
-                };
+                return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
             }
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
         };
         
-        // Touch events for mobile
         this.trackpad.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const pos = getTrackpadPos(e);
@@ -120,30 +102,24 @@ class Controller {
             if (!this.trackpadActive) return;
             
             const pos = getTrackpadPos(e);
-            const deltaX = (pos.x - this.lastX) * this.sensitivity;
-            const deltaY = (pos.y - this.lastY) * this.sensitivity;
+            const rect = this.trackpad.getBoundingClientRect();
             
-            this.sendMovement(deltaX, deltaY);
-            
-            this.lastX = pos.x;
-            this.lastY = pos.y;
             this.updateIndicator(pos.x, pos.y);
+            
+            this.sendAbsolutePosition(pos.x, pos.y, rect.width, rect.height);
         }, { passive: false });
         
         this.trackpad.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.trackpadActive = false;
-            this.trackpad.classList.remove('active');
-        }, { passive: false });
-        
-        this.trackpad.addEventListener('touchcancel', (e) => {
             this.trackpadActive = false;
             this.trackpad.classList.remove('active');
         });
         
-        // Mouse events for desktop testing
+        this.trackpad.addEventListener('touchcancel', () => {
+            this.trackpadActive = false;
+            this.trackpad.classList.remove('active');
+        });
+        
         this.trackpad.addEventListener('mousedown', (e) => {
-            e.preventDefault();
             const pos = getTrackpadPos(e);
             this.trackpadActive = true;
             this.lastX = pos.x;
@@ -156,26 +132,16 @@ class Controller {
             if (!this.trackpadActive) return;
             
             const rect = this.trackpad.getBoundingClientRect();
-            const pos = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
+            const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
             
-            const deltaX = (pos.x - this.lastX) * this.sensitivity;
-            const deltaY = (pos.y - this.lastY) * this.sensitivity;
-            
-            this.sendMovement(deltaX, deltaY);
-            
-            this.lastX = pos.x;
-            this.lastY = pos.y;
             this.updateIndicator(pos.x, pos.y);
+            
+            this.sendAbsolutePosition(pos.x, pos.y, rect.width, rect.height);
         });
         
         document.addEventListener('mouseup', () => {
-            if (this.trackpadActive) {
-                this.trackpadActive = false;
-                this.trackpad.classList.remove('active');
-            }
+            this.trackpadActive = false;
+            this.trackpad.classList.remove('active');
         });
     }
     
@@ -189,8 +155,7 @@ class Controller {
     }
     
     sendMovement(deltaX, deltaY) {
-        const deadzone = 0.5;
-        if (Math.abs(deltaX) < deadzone && Math.abs(deltaY) < deadzone) return;
+        if (Math.abs(deltaX) < this.minDelta && Math.abs(deltaY) < this.minDelta) return;
         
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({
@@ -201,8 +166,20 @@ class Controller {
         }
     }
     
+    sendAbsolutePosition(x, y, width, height) {
+        const normalizedX = x / width;
+        const normalizedY = y / height;
+        
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'move',
+                x: normalizedX,
+                y: normalizedY
+            }));
+        }
+    }
+    
     setupButtons() {
-        // Shoot button with auto-fire
         const startShooting = (e) => {
             e.preventDefault();
             this.shootFiring = true;
@@ -210,9 +187,7 @@ class Controller {
             this.sendShoot();
             
             this.shootInterval = setInterval(() => {
-                if (this.shootFiring) {
-                    this.sendShoot();
-                }
+                if (this.shootFiring) this.sendShoot();
             }, 100);
         };
         
@@ -235,41 +210,28 @@ class Controller {
         this.shootBtn.addEventListener('mouseup', stopShooting);
         this.shootBtn.addEventListener('mouseleave', stopShooting);
         
-        // Reset button
-        const handleReset = (e) => {
-            e.preventDefault();
-            this.sendReset();
-        };
-        
-        this.resetBtn.addEventListener('touchstart', handleReset, { passive: false });
-        this.resetBtn.addEventListener('mousedown', handleReset);
+        if (this.helpBtn) {
+            this.helpBtn.addEventListener('click', () => {
+                alert('Trackpad: Beweeg je vinger om de crosshair te besturen.\nShoot: Klik en houd vast om te schieten.');
+            });
+        }
     }
     
     sendShoot() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'shoot'
-            }));
-        }
-    }
-    
-    sendReset() {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'reset'
-            }));
+            this.ws.send(JSON.stringify({ type: 'shoot' }));
         }
     }
     
     updateConnectionStatus(status) {
-        this.connectionStatus.textContent = status;
+        if (this.connectionStatus) {
+            this.connectionStatus.textContent = status;
+        }
     }
     
     showManualConnection() {
         const manualConnection = document.getElementById('manual-connection');
-        if (manualConnection) {
-            manualConnection.style.display = 'block';
-        }
+        if (manualConnection) manualConnection.style.display = 'block';
     }
     
     setupManualConnection() {
@@ -280,23 +242,15 @@ class Controller {
             connectBtn.addEventListener('click', () => {
                 const ip = serverIp.value.trim();
                 if (ip) {
-                    if (this.ws) {
-                        this.ws.close();
-                    }
+                    if (this.ws) this.ws.close();
                     this.connectWebSocket(`${ip}:3000`);
                 }
             });
             
             serverIp.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    connectBtn.click();
-                }
+                if (e.key === 'Enter') connectBtn.click();
             });
         }
-    }
-    
-    updateConnectionStatus(status) {
-        this.connectionStatus.textContent = status;
     }
 }
 
@@ -304,8 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.controller = new Controller();
     
     setTimeout(() => {
-        if (window.controller) {
-            window.controller.setupManualConnection();
-        }
+        if (window.controller) window.controller.setupManualConnection();
     }, 100);
 });

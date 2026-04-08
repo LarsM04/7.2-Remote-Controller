@@ -87,6 +87,10 @@ class Game {
                         this.updateConnectionStatus('Controller verbonden!');
                         break;
                         
+                    case 'game_connected':
+                        console.log('Game is now connected');
+                        break;
+                        
                     case 'controller_disconnected':
                         this.autoShootEnabled = false;
                         console.log('Controller disconnected');
@@ -94,15 +98,17 @@ class Game {
                         break;
                         
                     case 'move':
-                        this.updateCrosshairFromController(data.deltaX, data.deltaY);
+                        console.log('Game received move:', data);
+                        if (data.x !== undefined && data.y !== undefined) {
+                            this.setCrosshairFromAbsolute(data.x, data.y);
+                        } else {
+                            this.updateCrosshairFromController(data.deltaX, data.deltaY);
+                        }
                         break;
                         
                     case 'shoot':
+                        console.log('Game received shoot');
                         this.shootFromController();
-                        break;
-                        
-                    case 'reset':
-                        this.resetGame();
                         break;
                         
                     case 'status':
@@ -145,10 +151,7 @@ class Game {
         this.createShotEffect(x, y);
         
         const hitTarget = this.checkTargetHit(x, y);
-        
-        if (hitTarget) {
-            this.hitTarget(hitTarget);
-        }
+        if (hitTarget) this.hitTarget(hitTarget);
         
         this.playShootSound();
     }
@@ -278,6 +281,14 @@ class Game {
         const padding = 20;
         this.crosshairX = Math.max(padding, Math.min(this.crosshairX, window.innerWidth - padding));
         this.crosshairY = Math.max(padding, Math.min(this.crosshairY, window.innerHeight - padding));
+        
+        this.updateCrosshairPosition();
+    }
+    
+    setCrosshairFromAbsolute(x, y) {
+        const padding = 20;
+        this.crosshairX = padding + x * (window.innerWidth - padding * 2);
+        this.crosshairY = padding + y * (window.innerHeight - padding * 2);
         
         this.updateCrosshairPosition();
     }
