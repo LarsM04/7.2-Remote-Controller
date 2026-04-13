@@ -5,13 +5,152 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remote Controller - Game</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Nieuw: extra UI-elementen voor wave systeem */
+        #wave {
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ff00;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff00;
+            border: 1px solid #00ff00;
+        }
+
+        #wave-value {
+            color: #fff;
+        }
+
+        /* Nieuw: stijlvolle wave announcement in het midden */
+        #wave-announcement {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 120;
+            pointer-events: none;
+            font-size: clamp(42px, 10vw, 100px);
+            font-weight: 900;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.9), 0 0 35px rgba(0, 212, 255, 0.55);
+            opacity: 0;
+        }
+
+        #wave-announcement.show {
+            animation: wavePulse 2s ease-in-out forwards;
+        }
+
+        @keyframes wavePulse {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.82);
+            }
+            20% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            80% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.04);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1.08);
+            }
+        }
+
+        /* Nieuw: boodschap voor game over */
+        #game-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 125;
+            padding: 18px 30px;
+            border: 2px solid #ff3333;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.78);
+            color: #ff6666;
+            font-size: clamp(24px, 4vw, 42px);
+            font-weight: 800;
+            text-shadow: 0 0 15px rgba(255, 51, 51, 0.8);
+            display: none;
+            pointer-events: none;
+        }
+
+        /* Nieuw: boss uiterlijk (2x normaal) */
+        .target.boss {
+            width: 120px;
+            height: 120px;
+            border-width: 4px;
+            background: radial-gradient(circle at 30% 30%, #ffb347, #ff5f1f 60%, #8f1800);
+            border-color: #ffcb80;
+            box-shadow: 0 0 28px rgba(255, 120, 0, 0.75), inset 0 0 24px rgba(0, 0, 0, 0.35);
+        }
+
+        .target.boss::before {
+            width: 72px;
+            height: 72px;
+            background: radial-gradient(circle at 30% 30%, #ffd191, #ff8f42);
+        }
+
+        .target.boss::after {
+            width: 36px;
+            height: 36px;
+            background: radial-gradient(circle at 30% 30%, #ffe7b8, #ffc27a);
+        }
+
+        /* Nieuw: zwevende healthbar boven de boss */
+        .boss-health-wrap {
+            position: absolute;
+            width: 130px;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 95;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        .boss-health-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #32cd32, #ffd700 60%, #ff3b30);
+            transition: width 0.15s linear;
+        }
+
+        /* Nieuw: speciale feedback bij boss kill */
+        #boss-defeat-flash {
+            position: absolute;
+            inset: 0;
+            z-index: 115;
+            pointer-events: none;
+            opacity: 0;
+            background: radial-gradient(circle at center, rgba(255, 215, 0, 0.45), rgba(255, 110, 0, 0.2), transparent 70%);
+        }
+
+        #boss-defeat-flash.show {
+            animation: bossFlash 0.7s ease-out forwards;
+        }
+
+        @keyframes bossFlash {
+            0% { opacity: 0; }
+            30% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
 </head>
 <body>
     <!-- Game Container -->
     <div id="game-container">
         <!-- Background layer -->
         <div id="background"></div>
-        
+
         <!-- Game area -->
         <div id="game-area">
             <!-- Crosshair -->
@@ -20,23 +159,549 @@
                 <div class="crosshair-line vertical"></div>
                 <div class="crosshair-dot"></div>
             </div>
-            
+
             <!-- Targets will be spawned here dynamically -->
             <div id="targets-container"></div>
-            
+
             <!-- Shot effects -->
             <div id="shot-effects"></div>
+
+            <!-- Nieuw: wave aankondiging -->
+            <div id="wave-announcement"></div>
+
+            <!-- Nieuw: game over melding -->
+            <div id="game-message"></div>
+
+            <!-- Nieuw: speciale boss feedback laag -->
+            <div id="boss-defeat-flash"></div>
         </div>
-        
+
         <!-- UI Elements -->
         <div id="ui-overlay">
             <div id="score">Score: <span id="score-value">0</span></div>
-            <div id="ammo">Ammo: <span id="ammo-value">∞</span></div>
+            <div id="ammo">Ammo: <span id="ammo-value">0</span></div>
+            <!-- Nieuw: wave indicator naast score en ammo -->
+            <div id="wave">Wave: <span id="wave-value">1</span></div>
             <div id="connection-status">Status: <span id="status-text">Verbonden</span></div>
             <a href="start.html" id="back-to-start" class="back-btn">← Terug naar Start</a>
         </div>
     </div>
-    
-    <script src="game.js"></script>
+
+    <script>
+        // Nieuw: volledige game-logica inclusief wave systeem, boss waves en ammo per wave
+        class Game {
+            constructor() {
+                this.crosshair = document.getElementById('crosshair');
+                this.gameArea = document.getElementById('game-area');
+                this.targetsContainer = document.getElementById('targets-container');
+                this.shotEffects = document.getElementById('shot-effects');
+
+                this.scoreValue = document.getElementById('score-value');
+                this.ammoValue = document.getElementById('ammo-value');
+                this.waveValue = document.getElementById('wave-value');
+                this.statusText = document.getElementById('status-text');
+
+                this.waveAnnouncement = document.getElementById('wave-announcement');
+                this.gameMessage = document.getElementById('game-message');
+                this.bossDefeatFlash = document.getElementById('boss-defeat-flash');
+
+                this.score = 0;
+                this.wave = 1;
+                this.ammo = 0;
+
+                this.crosshairX = window.innerWidth / 2;
+                this.crosshairY = window.innerHeight / 2;
+
+                this.targets = [];
+                this.gameOver = false;
+                this.waveTransition = false;
+
+                this.shootCooldown = false;
+                this.ws = null;
+
+                this.lastFrameTime = performance.now();
+                this.gameLoopHandle = null;
+
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.connectWebSocket();
+                this.updateCrosshairPosition();
+
+                // Nieuw: start de eerste wave
+                this.startWave(this.wave);
+
+                // Nieuw: continue loop voor target movement en boss healthbar follow
+                this.startGameLoop();
+            }
+
+            setupEventListeners() {
+                this.gameArea.addEventListener('mousemove', (e) => {
+                    this.crosshairX = e.clientX;
+                    this.crosshairY = e.clientY;
+                    this.updateCrosshairPosition();
+                });
+
+                this.gameArea.addEventListener('click', (e) => {
+                    this.shoot(e.clientX, e.clientY);
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        this.shoot(this.crosshairX, this.crosshairY);
+                    }
+                });
+
+                window.addEventListener('resize', () => {
+                    this.crosshairX = Math.min(this.crosshairX, window.innerWidth);
+                    this.crosshairY = Math.min(this.crosshairY, window.innerHeight);
+                    this.updateCrosshairPosition();
+                });
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onopen = () => {
+                    this.updateConnectionStatus('Verbonden met server');
+                    this.ws.send(JSON.stringify({ type: 'register', role: 'game' }));
+                };
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+
+                        switch (data.type) {
+                            case 'registered':
+                                this.updateConnectionStatus('Wachten op controller...');
+                                break;
+                            case 'controller_connected':
+                                this.updateConnectionStatus('Controller verbonden!');
+                                break;
+                            case 'controller_disconnected':
+                                this.updateConnectionStatus('Controller verbroken');
+                                break;
+                            case 'move':
+                                if (data.x !== undefined && data.y !== undefined) {
+                                    this.setCrosshairFromAbsolute(data.x, data.y);
+                                } else {
+                                    this.updateCrosshairFromController(data.deltaX || 0, data.deltaY || 0);
+                                }
+                                break;
+                            // Nieuw: expliciete ondersteuning voor { type: "aim", x, y }
+                            case 'aim':
+                                if (data.x !== undefined && data.y !== undefined) {
+                                    this.setCrosshairFromAbsolute(data.x, data.y);
+                                }
+                                break;
+                            case 'shoot':
+                                this.shootFromController();
+                                break;
+                            case 'status':
+                                this.updateConnectionStatus(data.message);
+                                break;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing message:', e);
+                    }
+                };
+
+                this.ws.onclose = () => {
+                    this.updateConnectionStatus('Verbinding verbroken');
+                    setTimeout(() => this.connectWebSocket(), 3000);
+                };
+
+                this.ws.onerror = () => {
+                    this.updateConnectionStatus('Verbindingsfout');
+                };
+            }
+
+            // Nieuw: wave start, ammo refill en wave text animatie
+            startWave(waveNumber) {
+                this.waveTransition = true;
+                this.clearTargets();
+
+                this.wave = waveNumber;
+                this.waveValue.textContent = this.wave;
+
+                this.ammo = 10 + this.wave * 2;
+                this.updateAmmoUI();
+
+                this.showWaveAnnouncement(`Wave ${this.wave}`);
+
+                setTimeout(() => {
+                    this.spawnWaveTargets();
+                    this.waveTransition = false;
+                }, 2000);
+            }
+
+            // Nieuw: progressieregels voor targets per wave en snelheid
+            spawnWaveTargets() {
+                if (this.wave % 5 === 0) {
+                    this.spawnBossTarget();
+                    return;
+                }
+
+                let targetCount;
+                if (this.wave === 1) {
+                    targetCount = 4;
+                } else if (this.wave === 2) {
+                    targetCount = 6;
+                } else {
+                    targetCount = 6 + ((this.wave - 2) * 2);
+                }
+
+                const speedMultiplier = Math.pow(1.1, this.wave - 1);
+
+                for (let i = 0; i < targetCount; i++) {
+                    this.spawnNormalTarget(speedMultiplier);
+                }
+            }
+
+            spawnNormalTarget(speedMultiplier) {
+                const target = document.createElement('div');
+                target.className = 'target';
+
+                const size = 60;
+                const padding = 80;
+                const x = padding + Math.random() * (window.innerWidth - padding * 2 - size);
+                const y = padding + Math.random() * (window.innerHeight - padding * 2 - size);
+
+                target.style.left = `${x}px`;
+                target.style.top = `${y}px`;
+
+                this.targetsContainer.appendChild(target);
+
+                // Nieuw: bewegende targets zodat hogere waves duidelijk sneller aanvoelen
+                const baseSpeed = 45;
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = baseSpeed * speedMultiplier;
+
+                const targetObj = {
+                    type: 'normal',
+                    element: target,
+                    x,
+                    y,
+                    size,
+                    vx: Math.cos(angle) * velocity,
+                    vy: Math.sin(angle) * velocity
+                };
+
+                this.targets.push(targetObj);
+            }
+
+            // Nieuw: boss wave target met 5 hp en healthbar
+            spawnBossTarget() {
+                const target = document.createElement('div');
+                target.className = 'target boss';
+
+                const size = 120;
+                const x = (window.innerWidth / 2) - (size / 2);
+                const y = Math.max(120, window.innerHeight * 0.2);
+
+                target.style.left = `${x}px`;
+                target.style.top = `${y}px`;
+
+                this.targetsContainer.appendChild(target);
+
+                const healthWrap = document.createElement('div');
+                healthWrap.className = 'boss-health-wrap';
+                const healthFill = document.createElement('div');
+                healthFill.className = 'boss-health-fill';
+                healthWrap.appendChild(healthFill);
+                this.gameArea.appendChild(healthWrap);
+
+                const baseSpeed = 120 * Math.pow(1.1, this.wave - 1);
+
+                const boss = {
+                    type: 'boss',
+                    element: target,
+                    healthWrap,
+                    healthFill,
+                    hp: 5,
+                    maxHp: 5,
+                    x,
+                    y,
+                    size,
+                    vx: baseSpeed,
+                    vy: 0
+                };
+
+                this.targets.push(boss);
+                this.updateBossHealthBar(boss);
+                this.updateBossHealthBarPosition(boss);
+            }
+
+            showWaveAnnouncement(text) {
+                this.waveAnnouncement.textContent = text;
+                this.waveAnnouncement.classList.remove('show');
+                // force reflow voor herstart animatie
+                void this.waveAnnouncement.offsetWidth;
+                this.waveAnnouncement.classList.add('show');
+            }
+
+            shoot(x, y) {
+                if (this.gameOver || this.waveTransition || this.shootCooldown) return;
+                if (this.ammo <= 0) return;
+
+                this.shootCooldown = true;
+                setTimeout(() => {
+                    this.shootCooldown = false;
+                }, 80);
+
+                // Nieuw: ammo wordt per schot verbruikt
+                this.ammo -= 1;
+                this.updateAmmoUI();
+
+                this.createShotEffect(x, y);
+
+                const hitTarget = this.checkTargetHit(x, y);
+                if (hitTarget) {
+                    this.hitTarget(hitTarget);
+                }
+
+                this.playShootSound();
+
+                // Nieuw: game over wanneer ammo op is en wave nog niet leeg
+                if (this.ammo <= 0 && this.targets.length > 0) {
+                    this.triggerGameOver('Game Over - geen ammo meer');
+                }
+            }
+
+            checkTargetHit(x, y) {
+                // Boss prioriteit bij overlap zodat center hits betrouwbaar voelen
+                const sorted = [...this.targets].sort((a, b) => (b.type === 'boss') - (a.type === 'boss'));
+
+                for (const target of sorted) {
+                    const centerX = target.x + target.size / 2;
+                    const centerY = target.y + target.size / 2;
+                    const radius = target.size / 2;
+
+                    const distance = Math.hypot(x - centerX, y - centerY);
+                    if (distance <= radius) {
+                        return target;
+                    }
+                }
+
+                return null;
+            }
+
+            // Nieuw: aparte hit-afhandeling voor normale target en boss hp
+            hitTarget(target) {
+                if (target.type === 'boss') {
+                    target.hp -= 1;
+                    this.updateBossHealthBar(target);
+
+                    target.element.classList.add('hit');
+                    setTimeout(() => target.element.classList.remove('hit'), 120);
+
+                    if (target.hp <= 0) {
+                        this.score += 500;
+                        this.scoreValue.textContent = this.score;
+
+                        this.triggerBossDefeatFeedback();
+                        this.removeTarget(target);
+                        this.checkWaveClear();
+                    }
+                    return;
+                }
+
+                target.element.classList.add('hit');
+                this.score += 10;
+                this.scoreValue.textContent = this.score;
+
+                setTimeout(() => {
+                    this.removeTarget(target);
+                    this.checkWaveClear();
+                }, 220);
+            }
+
+            removeTarget(target) {
+                if (target.healthWrap) {
+                    target.healthWrap.remove();
+                }
+                target.element.remove();
+
+                const index = this.targets.indexOf(target);
+                if (index > -1) {
+                    this.targets.splice(index, 1);
+                }
+            }
+
+            // Nieuw: wave is klaar als alle targets van die wave weg zijn
+            checkWaveClear() {
+                if (this.gameOver || this.waveTransition) return;
+                if (this.targets.length !== 0) return;
+
+                this.waveTransition = true;
+                setTimeout(() => {
+                    this.startWave(this.wave + 1);
+                }, 500);
+            }
+
+            startGameLoop() {
+                const loop = (time) => {
+                    const deltaTime = Math.min(0.05, (time - this.lastFrameTime) / 1000);
+                    this.lastFrameTime = time;
+
+                    this.updateTargets(deltaTime);
+                    this.gameLoopHandle = requestAnimationFrame(loop);
+                };
+
+                this.gameLoopHandle = requestAnimationFrame(loop);
+            }
+
+            // Nieuw: realtime beweging targets + boss heen-en-weer
+            updateTargets(deltaTime) {
+                for (const target of this.targets) {
+                    target.x += target.vx * deltaTime;
+                    target.y += target.vy * deltaTime;
+
+                    const minX = 0;
+                    const maxX = window.innerWidth - target.size;
+                    const minY = 70;
+                    const maxY = window.innerHeight - target.size;
+
+                    if (target.type === 'boss') {
+                        // Boss beweegt alleen horizontaal heen en weer
+                        if (target.x <= minX || target.x >= maxX) {
+                            target.vx *= -1;
+                            target.x = Math.max(minX, Math.min(target.x, maxX));
+                        }
+                    } else {
+                        // Normale targets stuiteren in beide assen
+                        if (target.x <= minX || target.x >= maxX) {
+                            target.vx *= -1;
+                            target.x = Math.max(minX, Math.min(target.x, maxX));
+                        }
+                        if (target.y <= minY || target.y >= maxY) {
+                            target.vy *= -1;
+                            target.y = Math.max(minY, Math.min(target.y, maxY));
+                        }
+                    }
+
+                    target.element.style.left = `${target.x}px`;
+                    target.element.style.top = `${target.y}px`;
+
+                    if (target.type === 'boss') {
+                        this.updateBossHealthBarPosition(target);
+                    }
+                }
+            }
+
+            updateBossHealthBar(target) {
+                const hpPercentage = Math.max(0, (target.hp / target.maxHp) * 100);
+                target.healthFill.style.width = `${hpPercentage}%`;
+            }
+
+            updateBossHealthBarPosition(target) {
+                const barX = target.x + (target.size / 2);
+                const barY = target.y - 14;
+                target.healthWrap.style.left = `${barX}px`;
+                target.healthWrap.style.top = `${barY}px`;
+            }
+
+            triggerBossDefeatFeedback() {
+                this.showWaveAnnouncement('BOSS VERSLAGEN +500');
+                this.bossDefeatFlash.classList.remove('show');
+                void this.bossDefeatFlash.offsetWidth;
+                this.bossDefeatFlash.classList.add('show');
+            }
+
+            triggerGameOver(message) {
+                this.gameOver = true;
+                this.gameMessage.textContent = message;
+                this.gameMessage.style.display = 'block';
+            }
+
+            clearTargets() {
+                this.targets.forEach((target) => {
+                    if (target.healthWrap) {
+                        target.healthWrap.remove();
+                    }
+                    target.element.remove();
+                });
+                this.targets = [];
+            }
+
+            createShotEffect(x, y) {
+                const effect = document.createElement('div');
+                effect.className = 'shot-effect';
+                effect.style.left = `${x - 10}px`;
+                effect.style.top = `${y - 10}px`;
+                this.shotEffects.appendChild(effect);
+
+                setTimeout(() => {
+                    effect.remove();
+                }, 300);
+            }
+
+            updateAmmoUI() {
+                this.ammoValue.textContent = this.ammo;
+            }
+
+            updateCrosshairPosition() {
+                this.crosshair.style.left = `${this.crosshairX}px`;
+                this.crosshair.style.top = `${this.crosshairY}px`;
+            }
+
+            updateCrosshairFromController(deltaX, deltaY) {
+                this.crosshairX += deltaX;
+                this.crosshairY += deltaY;
+
+                const padding = 20;
+                this.crosshairX = Math.max(padding, Math.min(this.crosshairX, window.innerWidth - padding));
+                this.crosshairY = Math.max(padding, Math.min(this.crosshairY, window.innerHeight - padding));
+
+                this.updateCrosshairPosition();
+            }
+
+            setCrosshairFromAbsolute(x, y) {
+                const padding = 20;
+                this.crosshairX = padding + x * (window.innerWidth - padding * 2);
+                this.crosshairY = padding + y * (window.innerHeight - padding * 2);
+                this.updateCrosshairPosition();
+            }
+
+            shootFromController() {
+                this.shoot(this.crosshairX, this.crosshairY);
+            }
+
+            playShootSound() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'square';
+
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.1);
+                } catch (e) {
+                    // Audio fallback bewust stil
+                }
+            }
+
+            updateConnectionStatus(status) {
+                this.statusText.textContent = status;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            window.game = new Game();
+        });
+    </script>
 </body>
 </html>
