@@ -1,6 +1,3 @@
-// Server - Remote Controller
-// Handles all WebSocket communication between game and controller
-
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -8,7 +5,6 @@ const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 3000;
 
-// MIME types for static files
 const mimeTypes = {
     '.html': 'text/html',
     '.css': 'text/css',
@@ -21,9 +17,7 @@ const mimeTypes = {
     '.ico': 'image/x-icon'
 };
 
-// Create HTTP server
 const server = http.createServer((req, res) => {
-    // Handle static files
     let filePath = req.url === '/' ? '/start.html' : req.url;
     filePath = path.join(__dirname, 'public', filePath);
     
@@ -46,23 +40,19 @@ const server = http.createServer((req, res) => {
     });
 });
 
-// Create WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// Store connected clients
 const clients = {
     game: null,
     controller: null
 };
 
-// Get local IP addresses
 function getLocalIPs() {
     const { networkInterfaces } = require('os');
     const nets = networkInterfaces();
     const ips = [];
     for (const name of Object.keys(nets)) {
         for (const net of nets[name]) {
-            // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
             if (net.family === 'IPv4' && !net.internal) {
                 ips.push(net.address);
             }
@@ -74,13 +64,8 @@ function getLocalIPs() {
 wss.on('connection', (ws) => {
     console.log('New client connected');
     
-    // Send available IP addresses to client
     const ips = getLocalIPs();
-    ws.send(JSON.stringify({
-        type: 'server_info',
-        ips: ips,
-        port: PORT
-    }));
+    ws.send(JSON.stringify({ type: 'server_info', ips: ips, port: PORT }));
     
     ws.on('message', (message) => {
         try {
@@ -88,13 +73,10 @@ wss.on('connection', (ws) => {
             
             switch (data.type) {
                 case 'register':
-                    // Register client as game or controller
                     if (data.role === 'game') {
                         clients.game = ws;
                         console.log('Game client registered');
                         ws.send(JSON.stringify({ type: 'registered', role: 'game' }));
-                        
-                        // If controller is already connected, notify game
                         if (clients.controller) {
                             ws.send(JSON.stringify({ type: 'controller_connected' }));
                             clients.controller.send(JSON.stringify({ type: 'game_connected' }));
@@ -103,66 +85,40 @@ wss.on('connection', (ws) => {
                         clients.controller = ws;
                         console.log('Controller client registered');
                         ws.send(JSON.stringify({ type: 'registered', role: 'controller' }));
-                        
-                        // Notify game that controller has connected
                         if (clients.game) {
                             clients.game.send(JSON.stringify({ type: 'controller_connected' }));
                             ws.send(JSON.stringify({ type: 'game_connected' }));
                         }
                     }
-                    
-                    // Send current connection status to the newly registered client
-                    if (data.role === 'game' && clients.controller) {
-                        ws.send(JSON.stringify({ type: 'controller_connected' }));
-                    } else if (data.role === 'controller' && clients.game) {
-                        ws.send(JSON.stringify({ type: 'game_connected' }));
-                    }
                     break;
                     
                 case 'move':
-                    console.log('Server received move:', data);
                     if (clients.game && ws === clients.controller) {
-                        console.log('Forwarding to game');
                         if (data.x !== undefined && data.y !== undefined) {
-                            clients.game.send(JSON.stringify({
-                                type: 'move',
-                                x: data.x,
-                                y: data.y
-                            }));
+                            clients.game.send(JSON.stringify({ type: 'move', x: data.x, y: data.y }));
                         } else {
-                            clients.game.send(JSON.stringify({
-                                type: 'move',
-                                deltaX: data.deltaX,
-                                deltaY: data.deltaY
-                            }));
+                            clients.game.send(JSON.stringify({ type: 'move', deltaX: data.deltaX, deltaY: data.deltaY }));
                         }
-                    } else {
-                        console.log('Not forwarding - game:', !!clients.game, 'sender is controller:', ws === clients.controller);
+                    }
+                    break;
+
+                case 'aim':
+                    if (clients.game && ws === clients.controller) {
+                        clients.game.send(JSON.stringify({ type: 'aim', x: data.x, y: data.y }));
                     }
                     break;
                     
                 case 'shoot':
-                    console.log('Server received shoot');
                     if (clients.game && ws === clients.controller) {
-                        console.log('Forwarding to game');
-                        clients.game.send(JSON.stringify({
-                            type: 'shoot'
-                        }));
+                        clients.game.send(JSON.stringify({ type: 'shoot' }));
                     }
                     break;
                     
                 case 'status':
-                    // Forward status updates
                     if (data.role === 'game' && clients.controller) {
-                        clients.controller.send(JSON.stringify({
-                            type: 'status',
-                            message: data.message
-                        }));
+                        clients.controller.send(JSON.stringify({ type: 'status', message: data.message }));
                     } else if (data.role === 'controller' && clients.game) {
-                        clients.game.send(JSON.stringify({
-                            type: 'status',
-                            message: data.message
-                        }));
+                        clients.game.send(JSON.stringify({ type: 'status', message: data.message }));
                     }
                     break;
             }
@@ -175,12 +131,8 @@ wss.on('connection', (ws) => {
         console.log('Client disconnected');
         if (ws === clients.game) {
             clients.game = null;
-            console.log('Game client disconnected');
         } else if (ws === clients.controller) {
             clients.controller = null;
-            console.log('Controller client disconnected');
-            
-            // Notify game that controller has disconnected
             if (clients.game) {
                 clients.game.send(JSON.stringify({ type: 'controller_disconnected' }));
             }
@@ -192,23 +144,15 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Start server
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Start screen: http://localhost:${PORT}/`);
-    console.log(`Game screen: http://localhost:${PORT}/index.html`);
-    console.log(`Controller: http://localhost:${PORT}/controller.html`);
     
-    // Get and display local IP addresses
     const { networkInterfaces } = require('os');
     const nets = networkInterfaces();
     console.log('\nAvailable on:');
     for (const name of Object.keys(nets)) {
         for (const net of nets[name]) {
-            // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
             if (net.family === 'IPv4' && !net.internal) {
-                console.log(`  Start: http://${net.address}:${PORT}`);
-                console.log(`  Game: http://${net.address}:${PORT}/index.html`);
                 console.log(`  Controller: http://${net.address}:${PORT}/controller.html`);
             }
         }

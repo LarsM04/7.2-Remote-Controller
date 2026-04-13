@@ -1,10 +1,31 @@
+/* VOOR: */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    touch-action: none;  /* <-- dit is de boosdoener */
+}
+
+/* NA: */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    /* touch-action weghalen hier, per element instellen */
+}
+
+/* Alleen trackpad krijgt touch-action: none */
+#trackpad {
     touch-action: none;
+}
+
+/* Knoppen krijgen manipulation zodat tap werkt */
+button {
+    touch-action: manipulation;
 }
 
 html, body {
@@ -231,4 +252,14 @@ body {
         font-size: 9px;
         letter-spacing: 1px;
     }
+}
+
+/* Trackpad touch fix */
+#trackpad {
+    touch-action: none;
+    -webkit-touch-callout: none;
+}
+
+#mode-joystick, #mode-gyro, .gyro-btn, #shoot-btn, #help-btn {
+    touch-action: manipulation;
 }
