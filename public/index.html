@@ -134,6 +134,19 @@
             background: radial-gradient(circle at center, rgba(255, 215, 0, 0.45), rgba(255, 110, 0, 0.2), transparent 70%);
         }
 
+        /* --- ENEMY VISUALS: nieuw --- */
+        #enemy-canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 92;
+            pointer-events: none;
+        }
+
+        .target {
+            opacity: 0;
+        }
+        /* --- ENEMY VISUALS: einde --- */
+
         #boss-defeat-flash.show {
             animation: bossFlash 0.7s ease-out forwards;
         }
@@ -162,6 +175,9 @@
 
             <!-- Targets will be spawned here dynamically -->
             <div id="targets-container"></div>
+            <!-- --- ENEMY VISUALS: nieuw --- -->
+            <canvas id="enemy-canvas"></canvas>
+            <!-- --- ENEMY VISUALS: einde --- -->
 
             <!-- Shot effects -->
             <div id="shot-effects"></div>
@@ -195,6 +211,13 @@
                 this.gameArea = document.getElementById('game-area');
                 this.targetsContainer = document.getElementById('targets-container');
                 this.shotEffects = document.getElementById('shot-effects');
+
+                // --- ENEMY VISUALS: nieuw ---
+                this.enemyCanvas = document.getElementById('enemy-canvas');
+                this.enemyCtx = this.enemyCanvas.getContext('2d');
+                this.deathEffects = [];
+                this.enemyEmojiMap = ['👾', '🛸', '☄️', '🤖'];
+                // --- ENEMY VISUALS: einde ---
 
                 this.scoreValue = document.getElementById('score-value');
                 this.ammoValue = document.getElementById('ammo-value');
@@ -230,6 +253,10 @@
                 this.connectWebSocket();
                 this.updateCrosshairPosition();
 
+                // --- ENEMY VISUALS: nieuw ---
+                this.resizeEnemyCanvas();
+                // --- ENEMY VISUALS: einde ---
+
                 // Nieuw: start de eerste wave
                 this.startWave(this.wave);
 
@@ -258,6 +285,10 @@
                     this.crosshairX = Math.min(this.crosshairX, window.innerWidth);
                     this.crosshairY = Math.min(this.crosshairY, window.innerHeight);
                     this.updateCrosshairPosition();
+
+                    // --- ENEMY VISUALS: nieuw ---
+                    this.resizeEnemyCanvas();
+                    // --- ENEMY VISUALS: einde ---
                 });
             }
 
@@ -388,6 +419,13 @@
                     x,
                     y,
                     size,
+                    // --- ENEMY VISUALS: nieuw ---
+                    wave: this.wave,
+                    radius: size / 2,
+                    lastHitTime: 0,
+                    hitFlashUntil: 0,
+                    isDead: false,
+                    // --- ENEMY VISUALS: einde ---
                     vx: Math.cos(angle) * velocity,
                     vy: Math.sin(angle) * velocity
                 };
@@ -428,6 +466,15 @@
                     x,
                     y,
                     size,
+                    // --- ENEMY VISUALS: nieuw ---
+                    wave: this.wave,
+                    radius: size / 2,
+                    isBoss: true,
+                    angle: 0,
+                    lastHitTime: 0,
+                    hitFlashUntil: 0,
+                    isDead: false,
+                    // --- ENEMY VISUALS: einde ---
                     vx: baseSpeed,
                     vy: 0
                 };
@@ -493,6 +540,10 @@
 
             // Nieuw: aparte hit-afhandeling voor normale target en boss hp
             hitTarget(target) {
+                // --- ENEMY VISUALS: nieuw ---
+                const now = performance.now();
+                // --- ENEMY VISUALS: einde ---
+
                 if (target.type === 'boss') {
                     target.hp -= 1;
                     this.updateBossHealthBar(target);
@@ -504,9 +555,19 @@
                         this.score += 500;
                         this.scoreValue.textContent = this.score;
 
+                        // --- ENEMY VISUALS: nieuw ---
+                        target.isDead = true;
+                        this.spawnDeathEffect(target);
+                        // --- ENEMY VISUALS: einde ---
+
                         this.triggerBossDefeatFeedback();
                         this.removeTarget(target);
                         this.checkWaveClear();
+                    } else {
+                        // --- ENEMY VISUALS: nieuw ---
+                        target.lastHitTime = now;
+                        target.hitFlashUntil = now + 100;
+                        // --- ENEMY VISUALS: einde ---
                     }
                     return;
                 }
@@ -515,10 +576,16 @@
                 this.score += 10;
                 this.scoreValue.textContent = this.score;
 
+                // --- ENEMY VISUALS: nieuw ---
+                target.lastHitTime = now;
+                target.hitFlashUntil = now + 100;
                 setTimeout(() => {
+                    target.isDead = true;
+                    this.spawnDeathEffect(target);
                     this.removeTarget(target);
                     this.checkWaveClear();
                 }, 220);
+                // --- ENEMY VISUALS: einde ---
             }
 
             removeTarget(target) {
@@ -550,6 +617,9 @@
                     this.lastFrameTime = time;
 
                     this.updateTargets(deltaTime);
+                    // --- ENEMY VISUALS: nieuw ---
+                    this.renderEnemyVisuals(time);
+                    // --- ENEMY VISUALS: einde ---
                     this.gameLoopHandle = requestAnimationFrame(loop);
                 };
 
@@ -598,6 +668,141 @@
                 const hpPercentage = Math.max(0, (target.hp / target.maxHp) * 100);
                 target.healthFill.style.width = `${hpPercentage}%`;
             }
+
+            // --- ENEMY VISUALS: nieuw ---
+            resizeEnemyCanvas() {
+                this.enemyCanvas.width = window.innerWidth;
+                this.enemyCanvas.height = window.innerHeight;
+            }
+
+            getEmojiForWave(wave) {
+                const index = ((wave - 1) % 4 + 4) % 4;
+                return this.enemyEmojiMap[index];
+            }
+
+            spawnDeathEffect(target) {
+                const centerX = target.x + target.size / 2;
+                const centerY = target.y + target.size / 2;
+                const startTime = performance.now();
+                const stars = [];
+
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI * 2 * i) / 6;
+                    const speed = 20 + Math.random() * 30;
+                    stars.push({ angle, speed });
+                }
+
+                this.deathEffects.push({ centerX, centerY, startTime, duration: 400, stars });
+            }
+
+            renderEnemyVisuals(time) {
+                const ctx = this.enemyCtx;
+                ctx.clearRect(0, 0, this.enemyCanvas.width, this.enemyCanvas.height);
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                for (const target of this.targets) {
+                    if (target.isDead) {
+                        continue;
+                    }
+
+                    const centerX = target.x + target.size / 2;
+                    const centerY = target.y + target.size / 2;
+                    const radius = target.radius || target.size / 2;
+                    const flashActive = target.hitFlashUntil && time <= target.hitFlashUntil;
+
+                    if (target.type === 'boss') {
+                        target.angle = (target.angle || 0) + 0.01;
+                        this.drawBossUfo(ctx, centerX, centerY, radius, target.angle, flashActive);
+                    } else {
+                        const emoji = this.getEmojiForWave(target.wave || this.wave);
+                        ctx.save();
+                        ctx.font = `${radius * 2}px serif`;
+                        if (flashActive) {
+                            ctx.shadowColor = 'rgba(255,255,255,0.95)';
+                            ctx.shadowBlur = 14;
+                        }
+                        ctx.fillText(emoji, centerX, centerY);
+                        if (flashActive) {
+                            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                            ctx.beginPath();
+                            ctx.arc(centerX, centerY, radius * 0.9, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.restore();
+                    }
+                }
+
+                this.renderDeathEffects(ctx, time);
+            }
+
+            drawBossUfo(ctx, x, y, radius, angle, flashActive) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angle);
+
+                const glow = ctx.createRadialGradient(0, -radius * 0.45, radius * 0.1, 0, -radius * 0.45, radius * 1.25);
+                glow.addColorStop(0, 'rgba(68,204,255,0.3)');
+                glow.addColorStop(1, 'rgba(68,204,255,0)');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.45, radius * 1.25, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#888';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, radius, radius * 0.3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(68,204,255,0.8)';
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.2, radius * 0.6, Math.PI, 0, false);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#ffd84a';
+                for (let i = 0; i < 3; i++) {
+                    const offset = (i - 1) * radius * 0.45;
+                    ctx.beginPath();
+                    ctx.arc(offset, 0, radius * 0.12, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                if (flashActive) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            renderDeathEffects(ctx, time) {
+                this.deathEffects = this.deathEffects.filter((effect) => {
+                    const elapsed = time - effect.startTime;
+                    if (elapsed > effect.duration) {
+                        return false;
+                    }
+
+                    const progress = elapsed / effect.duration;
+                    const distance = 8 + progress * 34;
+
+                    ctx.save();
+                    ctx.globalAlpha = 1 - progress;
+                    ctx.font = `${14 + progress * 6}px serif`;
+                    for (const star of effect.stars) {
+                        const sx = effect.centerX + Math.cos(star.angle) * distance * (star.speed / 40);
+                        const sy = effect.centerY + Math.sin(star.angle) * distance * (star.speed / 40);
+                        ctx.fillText('✨', sx, sy);
+                    }
+                    ctx.restore();
+
+                    return true;
+                });
+            }
+            // --- ENEMY VISUALS: einde ---
 
             updateBossHealthBarPosition(target) {
                 const barX = target.x + (target.size / 2);
