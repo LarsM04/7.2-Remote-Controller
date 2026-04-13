@@ -260,6 +260,6 @@ body {
     -webkit-touch-callout: none;
 }
 
-#mode-joystick, #mode-gyro, .gyro-btn, #shoot-btn, #help-btn {
+#shoot-btn, #help-btn {
     touch-action: manipulation;
 }

@@ -5,125 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Remote Controller</title>
     <link rel="stylesheet" href="controller.css">
-    <style>
-        #input-mode-bar {
-            position: relative;
-            z-index: 20;
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            padding: 14px 12px 6px;
-        }
-        .mode-btn {
-            min-width: 120px;
-            padding: 10px 14px;
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.08);
-            color: rgba(255,255,255,0.85);
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            touch-action: manipulation;
-        }
-        .mode-btn.active {
-            background: linear-gradient(145deg, #00d4ff 0%, #0099cc 100%);
-            border-color: rgba(255,255,255,0.45);
-            color: #fff;
-        }
-        #gyro-panel {
-            width: 60%;
-            max-width: 400px;
-            aspect-ratio: 1;
-            max-height: 70vh;
-            background: rgba(15,25,45,0.7);
-            border-radius: 24px;
-            border: 1px solid rgba(255,255,255,0.1);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 14px;
-            padding: 18px;
-            text-align: center;
-        }
-        #gyro-panel.active {
-            display: flex;
-        }
-        /* FIX 1: trackpad verbergen met !important zodat controller.css niet wint */
-        #trackpad.hidden {
-            display: none !important;
-        }
-        #gyro-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .gyro-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 700;
-            color: #fff;
-            background: linear-gradient(145deg, #00d4ff 0%, #0099cc 100%);
-            cursor: pointer;
-            touch-action: manipulation;
-            /* FIX 2: zorg dat de knop altijd klikbaar is */
-            pointer-events: auto;
-            position: relative;
-            z-index: 30;
-        }
-        #gyro-error {
-            color: #ffb3b3;
-            font-size: 12px;
-            min-height: 16px;
-        }
-        #gyro-compass {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.35);
-            position: relative;
-            background: radial-gradient(circle, rgba(0,212,255,0.1), rgba(0,0,0,0.2));
-        }
-        #gyro-dot {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #00d4ff;
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-        }
-    </style>
 </head>
 <body>
     <div id="controller-wrapper">
-        <div id="input-mode-bar">
-            <button id="mode-joystick" class="mode-btn active" type="button">Joystick</button>
-            <button id="mode-gyro" class="mode-btn" type="button">Gyro</button>
-        </div>
-
         <div id="main-area">
             <div id="trackpad">
                 <div id="trackpad-center">+</div>
                 <div id="trackpad-indicator"></div>
-            </div>
-
-            <div id="gyro-panel">
-                <div id="gyro-controls">
-                    <!-- FIX 3: standaard verborgen via display, niet via style attribuut -->
-                    <button id="gyro-enable-btn" class="gyro-btn" type="button" style="display:none;">Gyro inschakelen</button>
-                    <button id="gyro-calibrate-btn" class="gyro-btn" type="button">Kalibreer</button>
-                </div>
-                <div id="gyro-compass">
-                    <div id="gyro-dot"></div>
-                </div>
-                <div id="gyro-error"></div>
             </div>
 
             <button id="shoot-btn">SHOOT</button>
@@ -144,37 +32,17 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-
             // --- Elementen ophalen ---
-            const trackpad          = document.getElementById('trackpad');
+            const trackpad = document.getElementById('trackpad');
             const trackpadIndicator = document.getElementById('trackpad-indicator');
-            const shootBtn          = document.getElementById('shoot-btn');
-            const connectionStatus  = document.getElementById('connection-status');
-            const helpBtn           = document.getElementById('help-btn');
-            const modeJoystickBtn   = document.getElementById('mode-joystick');
-            const modeGyroBtn       = document.getElementById('mode-gyro');
-            const gyroPanel         = document.getElementById('gyro-panel');
-            const gyroEnableBtn     = document.getElementById('gyro-enable-btn');
-            const gyroCalibrateBtn  = document.getElementById('gyro-calibrate-btn');
-            const gyroError         = document.getElementById('gyro-error');
-            const gyroDot           = document.getElementById('gyro-dot');
+            const shootBtn = document.getElementById('shoot-btn');
+            const connectionStatus = document.getElementById('connection-status');
+            const helpBtn = document.getElementById('help-btn');
 
             // --- State ---
             let ws = null;
             let trackpadActive = false;
             let shootInterval = null;
-            let inputMode = 'joystick'; // 'joystick' | 'gyro'
-            let gyroPermissionGranted = false;
-            let orientationListening = false;
-            let gyroInterval = null;
-            let currentBeta = 0, currentGamma = 0;
-            let zeroBeta = 0, zeroGamma = 0;
-            let smoothedX = 0.5, smoothedY = 0.5;
-            let orientationChangeListening = false;
-            let lastLandscapeState = null;
-            const FULL_TILT = 20;
-            const GYRO_SMOOTHING_ALPHA = 0.2;
-            const GYRO_DEAD_ZONE = 0.05;
 
             // --- WebSocket ---
             function connectWebSocket(customHost = null) {
@@ -189,13 +57,19 @@
                 ws.onmessage = (e) => {
                     try {
                         const d = JSON.parse(e.data);
-                        if (d.type === 'registered')     updateStatus('Verbonden met game');
+                        if (d.type === 'registered') updateStatus('Verbonden met game');
                         if (d.type === 'game_connected') updateStatus('Game actief!');
-                        if (d.type === 'status')         updateStatus(d.message);
-                    } catch(err) {}
+                        if (d.type === 'status') updateStatus(d.message);
+                    } catch (err) {}
                 };
-                ws.onclose = () => { updateStatus('Verbroken'); setTimeout(() => connectWebSocket(), 3000); };
-                ws.onerror = () => { updateStatus('Verbindingsfout'); showManualConnection(); };
+                ws.onclose = () => {
+                    updateStatus('Verbroken');
+                    setTimeout(() => connectWebSocket(), 3000);
+                };
+                ws.onerror = () => {
+                    updateStatus('Verbindingsfout');
+                    showManualConnection();
+                };
             }
 
             function sendWS(obj) {
@@ -220,16 +94,14 @@
             }
 
             function handleTrackpadInput(e) {
-                if (inputMode !== 'joystick') return;
                 e.preventDefault();
                 const p = getPos(e);
                 trackpadActive = true;
                 trackpad.classList.add('active');
-                // indicator bijwerken
                 const ix = Math.max(30, Math.min(p.x, p.w - 30));
                 const iy = Math.max(30, Math.min(p.y, p.h - 30));
                 trackpadIndicator.style.left = ix + 'px';
-                trackpadIndicator.style.top  = iy + 'px';
+                trackpadIndicator.style.top = iy + 'px';
                 sendAim(p.x / p.w, p.y / p.h);
             }
 
@@ -238,13 +110,15 @@
                 trackpad.classList.remove('active');
             }
 
-            trackpad.addEventListener('touchstart',  handleTrackpadInput, { passive: false });
-            trackpad.addEventListener('touchmove',   handleTrackpadInput, { passive: false });
-            trackpad.addEventListener('touchend',    handleTrackpadEnd);
+            trackpad.addEventListener('touchstart', handleTrackpadInput, { passive: false });
+            trackpad.addEventListener('touchmove', handleTrackpadInput, { passive: false });
+            trackpad.addEventListener('touchend', handleTrackpadEnd);
             trackpad.addEventListener('touchcancel', handleTrackpadEnd);
-            trackpad.addEventListener('mousedown',   handleTrackpadInput);
-            document.addEventListener('mousemove',   (e) => { if (trackpadActive) handleTrackpadInput(e); });
-            document.addEventListener('mouseup',     handleTrackpadEnd);
+            trackpad.addEventListener('mousedown', handleTrackpadInput);
+            document.addEventListener('mousemove', (e) => {
+                if (trackpadActive) handleTrackpadInput(e);
+            });
+            document.addEventListener('mouseup', handleTrackpadEnd);
 
             // --- Shoot ---
             function startShooting(e) {
@@ -253,214 +127,25 @@
                 sendWS({ type: 'shoot' });
                 shootInterval = setInterval(() => sendWS({ type: 'shoot' }), 100);
             }
+
             function stopShooting(e) {
                 e.preventDefault();
                 shootBtn.classList.remove('firing');
                 clearInterval(shootInterval);
                 shootInterval = null;
             }
-            shootBtn.addEventListener('touchstart',  startShooting, { passive: false });
-            shootBtn.addEventListener('touchend',    stopShooting,  { passive: false });
+
+            shootBtn.addEventListener('touchstart', startShooting, { passive: false });
+            shootBtn.addEventListener('touchend', stopShooting, { passive: false });
             shootBtn.addEventListener('touchcancel', stopShooting);
-            shootBtn.addEventListener('mousedown',   startShooting);
-            shootBtn.addEventListener('mouseup',     stopShooting);
-            shootBtn.addEventListener('mouseleave',  stopShooting);
-
-            // --- UI mode wisselen ---
-            function applyModeUI() {
-                const isJoystick = inputMode === 'joystick';
-                modeJoystickBtn.classList.toggle('active', isJoystick);
-                modeGyroBtn.classList.toggle('active', !isJoystick);
-                // FIX 1: gebruik !important class zodat controller.css niet wint
-                trackpad.classList.toggle('hidden', !isJoystick);
-                gyroPanel.classList.toggle('active', !isJoystick);
-                if (isJoystick) gyroError.textContent = '';
-            }
-
-            // FIX 2: mode-joystick is gewone sync click
-            modeJoystickBtn.addEventListener('click', () => {
-                stopGyro();
-                inputMode = 'joystick';
-                trackpadActive = false;
-                applyModeUI();
-            });
-
-            // FIX 3: mode-gyro click is NIET async — toestemming komt later via aparte knop
-            modeGyroBtn.addEventListener('click', () => {
-                inputMode = 'gyro';
-                applyModeUI();
-                tryStartGyro();
-            });
-
-            // --- Gyro ---
-            function tryStartGyro() {
-                gyroError.textContent = '';
-                gyroEnableBtn.style.display = 'none';
-
-                if (!window.DeviceOrientationEvent) {
-                    gyroError.textContent = 'Gyroscoop niet ondersteund, gebruik joystick';
-                    return;
-                }
-
-                // iOS vereist toestemming
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    if (!gyroPermissionGranted) {
-                        // Toon de knop — gebruiker moet zelf klikken (iOS vereist directe user gesture)
-                        gyroEnableBtn.style.display = 'inline-block';
-                        gyroError.textContent = 'Tik op "Gyro inschakelen" voor toestemming';
-                        return;
-                    }
-                }
-
-                // Android of iOS na toestemming
-                startGyro();
-            }
-
-            // FIX 4: enable knop heeft zijn EIGEN async handler, directe user gesture voor iOS
-            gyroEnableBtn.addEventListener('click', async () => {
-                try {
-                    const result = await DeviceOrientationEvent.requestPermission();
-                    if (result === 'granted') {
-                        gyroPermissionGranted = true;
-                        gyroEnableBtn.style.display = 'none';
-                        gyroError.textContent = '';
-                        startGyro();
-                    } else {
-                        gyroError.textContent = 'Toestemming geweigerd, gebruik joystick';
-                    }
-                } catch(err) {
-                    gyroError.textContent = 'Toestemming geweigerd, gebruik joystick';
-                }
-            });
-
-            gyroCalibrateBtn.addEventListener('click', () => {
-                calibrateGyro('Gekalibreerd!');
-            });
-
-            function isLandscapeOrientation() {
-                if (window.screen && window.screen.orientation && typeof window.screen.orientation.type === 'string') {
-                    return window.screen.orientation.type.startsWith('landscape');
-                }
-                if (typeof window.orientation === 'number') {
-                    return Math.abs(window.orientation) === 90;
-                }
-                return window.innerWidth > window.innerHeight;
-            }
-
-            function handleOrientation(e) {
-                if (typeof e.beta !== 'number' || typeof e.gamma !== 'number') return;
-                currentBeta  = e.beta;
-                currentGamma = e.gamma;
-
-                const landscape = isLandscapeOrientation();
-                if (lastLandscapeState === null) {
-                    lastLandscapeState = landscape;
-                } else if (lastLandscapeState !== landscape) {
-                    lastLandscapeState = landscape;
-                    calibrateGyro('Automatisch gekalibreerd');
-                }
-
-                // kompas bijwerken met dezelfde gefilterde waardes als aim
-                const aim = getGyroAim();
-                const r = 42;
-                gyroDot.style.left = `calc(50% + ${(aim.x - 0.5) * 2 * r}px)`;
-                gyroDot.style.top  = `calc(50% + ${(aim.y - 0.5) * 2 * r}px)`;
-            }
-
-            function getGyroAim() {
-                const landscape = isLandscapeOrientation();
-                let rawX = currentGamma;
-                let rawY = currentBeta;
-
-                if (landscape) {
-                    rawX = currentGamma;
-                    rawY = currentBeta;
-                }
-
-                // Spiegeling corrigeren: links kantelen moet crosshair naar links bewegen
-                rawX = -rawX;
-
-                smoothedX = GYRO_SMOOTHING_ALPHA * rawX + (1 - GYRO_SMOOTHING_ALPHA) * smoothedX;
-                smoothedY = GYRO_SMOOTHING_ALPHA * rawY + (1 - GYRO_SMOOTHING_ALPHA) * smoothedY;
-
-                let deltaX = (smoothedX - zeroGamma) / FULL_TILT;
-                let deltaY = (smoothedY - zeroBeta) / FULL_TILT;
-
-                if (Math.abs(deltaX) < GYRO_DEAD_ZONE) deltaX = 0;
-                if (Math.abs(deltaY) < GYRO_DEAD_ZONE) deltaY = 0;
-
-                const x = clamp01(0.5 + deltaX * 0.5);
-                const y = clamp01(0.5 + deltaY * 0.5);
-                return { x, y };
-            }
-
-            function calibrateGyro(message = 'Gekalibreerd!') {
-                const landscape = isLandscapeOrientation();
-                let calibrationX = currentGamma;
-                let calibrationY = currentBeta;
-
-                if (landscape) {
-                    calibrationX = currentGamma;
-                    calibrationY = currentBeta;
-                }
-
-                calibrationX = -calibrationX;
-
-                zeroGamma = calibrationX;
-                zeroBeta = calibrationY;
-                smoothedX = calibrationX;
-                smoothedY = calibrationY;
-
-                gyroError.textContent = message;
-                setTimeout(() => {
-                    if (gyroError.textContent === message) gyroError.textContent = '';
-                }, 1500);
-            }
-
-            function startGyro() {
-                if (!orientationListening) {
-                    window.addEventListener('deviceorientation', handleOrientation);
-                    orientationListening = true;
-                }
-                if (!orientationChangeListening) {
-                    window.addEventListener('orientationchange', () => {
-                        if (inputMode === 'gyro') {
-                            lastLandscapeState = isLandscapeOrientation();
-                            calibrateGyro('Automatisch gekalibreerd');
-                        }
-                    });
-                    orientationChangeListening = true;
-                }
-
-                lastLandscapeState = isLandscapeOrientation();
-                // kalibreer meteen
-                calibrateGyro();
-                // stuur elke 16ms aim
-                stopGyroInterval();
-                gyroInterval = setInterval(() => {
-                    if (inputMode === 'gyro') {
-                        const aim = getGyroAim();
-                        sendAim(aim.x, aim.y);
-                    }
-                }, 16);
-            }
-
-            function stopGyro() {
-                stopGyroInterval();
-                if (orientationListening) {
-                    window.removeEventListener('deviceorientation', handleOrientation);
-                    orientationListening = false;
-                }
-            }
-
-            function stopGyroInterval() {
-                if (gyroInterval) { clearInterval(gyroInterval); gyroInterval = null; }
-            }
+            shootBtn.addEventListener('mousedown', startShooting);
+            shootBtn.addEventListener('mouseup', stopShooting);
+            shootBtn.addEventListener('mouseleave', stopShooting);
 
             // --- Help ---
             if (helpBtn) {
                 helpBtn.addEventListener('click', () => {
-                    alert('Joystick: beweeg je vinger over het trackpad.\nGyro: kantel je telefoon om te richten.\nShoot: klik en houd vast om te schieten.');
+                    alert('Joystick: beweeg je vinger over het trackpad.\nShoot: klik en houd vast om te schieten.');
                 });
             }
 
@@ -469,8 +154,9 @@
                 const el = document.getElementById('manual-connection');
                 if (el) el.style.display = 'block';
             }
+
             const connectBtn = document.getElementById('connect-btn');
-            const serverIp   = document.getElementById('server-ip');
+            const serverIp = document.getElementById('server-ip');
             if (connectBtn && serverIp) {
                 connectBtn.addEventListener('click', () => {
                     const ip = serverIp.value.trim();
@@ -484,10 +170,11 @@
             }
 
             // --- Utils ---
-            function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+            function clamp01(v) {
+                return Math.max(0, Math.min(1, v));
+            }
 
             // --- Start ---
-            applyModeUI();
             connectWebSocket();
         });
     </script>
