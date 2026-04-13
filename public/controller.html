@@ -169,7 +169,12 @@
             let gyroInterval = null;
             let currentBeta = 0, currentGamma = 0;
             let zeroBeta = 0, zeroGamma = 0;
-            const FULL_TILT = 30;
+            let smoothedX = 0.5, smoothedY = 0.5;
+            let orientationChangeListening = false;
+            let lastLandscapeState = null;
+            const FULL_TILT = 20;
+            const GYRO_SMOOTHING_ALPHA = 0.2;
+            const GYRO_DEAD_ZONE = 0.05;
 
             // --- WebSocket ---
             function connectWebSocket(customHost = null) {
@@ -329,17 +334,33 @@
             });
 
             gyroCalibrateBtn.addEventListener('click', () => {
-                zeroBeta  = currentBeta;
-                zeroGamma = currentGamma;
-                gyroError.textContent = 'Gekalibreerd!';
-                setTimeout(() => { gyroError.textContent = ''; }, 1500);
+                calibrateGyro('Gekalibreerd!');
             });
+
+            function isLandscapeOrientation() {
+                if (window.screen && window.screen.orientation && typeof window.screen.orientation.type === 'string') {
+                    return window.screen.orientation.type.startsWith('landscape');
+                }
+                if (typeof window.orientation === 'number') {
+                    return Math.abs(window.orientation) === 90;
+                }
+                return window.innerWidth > window.innerHeight;
+            }
 
             function handleOrientation(e) {
                 if (typeof e.beta !== 'number' || typeof e.gamma !== 'number') return;
                 currentBeta  = e.beta;
                 currentGamma = e.gamma;
-                // kompas bijwerken
+
+                const landscape = isLandscapeOrientation();
+                if (lastLandscapeState === null) {
+                    lastLandscapeState = landscape;
+                } else if (lastLandscapeState !== landscape) {
+                    lastLandscapeState = landscape;
+                    calibrateGyro('Automatisch gekalibreerd');
+                }
+
+                // kompas bijwerken met dezelfde gefilterde waardes als aim
                 const aim = getGyroAim();
                 const r = 42;
                 gyroDot.style.left = `calc(50% + ${(aim.x - 0.5) * 2 * r}px)`;
@@ -347,9 +368,53 @@
             }
 
             function getGyroAim() {
-                const x = clamp01(0.5 + ((currentGamma - zeroGamma) / FULL_TILT) * 0.5);
-                const y = clamp01(0.5 + ((currentBeta  - zeroBeta)  / FULL_TILT) * 0.5);
+                const landscape = isLandscapeOrientation();
+                let rawX = currentGamma;
+                let rawY = currentBeta;
+
+                if (landscape) {
+                    rawX = currentGamma;
+                    rawY = currentBeta;
+                }
+
+                // Spiegeling corrigeren: links kantelen moet crosshair naar links bewegen
+                rawX = -rawX;
+
+                smoothedX = GYRO_SMOOTHING_ALPHA * rawX + (1 - GYRO_SMOOTHING_ALPHA) * smoothedX;
+                smoothedY = GYRO_SMOOTHING_ALPHA * rawY + (1 - GYRO_SMOOTHING_ALPHA) * smoothedY;
+
+                let deltaX = (smoothedX - zeroGamma) / FULL_TILT;
+                let deltaY = (smoothedY - zeroBeta) / FULL_TILT;
+
+                if (Math.abs(deltaX) < GYRO_DEAD_ZONE) deltaX = 0;
+                if (Math.abs(deltaY) < GYRO_DEAD_ZONE) deltaY = 0;
+
+                const x = clamp01(0.5 + deltaX * 0.5);
+                const y = clamp01(0.5 + deltaY * 0.5);
                 return { x, y };
+            }
+
+            function calibrateGyro(message = 'Gekalibreerd!') {
+                const landscape = isLandscapeOrientation();
+                let calibrationX = currentGamma;
+                let calibrationY = currentBeta;
+
+                if (landscape) {
+                    calibrationX = currentGamma;
+                    calibrationY = currentBeta;
+                }
+
+                calibrationX = -calibrationX;
+
+                zeroGamma = calibrationX;
+                zeroBeta = calibrationY;
+                smoothedX = calibrationX;
+                smoothedY = calibrationY;
+
+                gyroError.textContent = message;
+                setTimeout(() => {
+                    if (gyroError.textContent === message) gyroError.textContent = '';
+                }, 1500);
             }
 
             function startGyro() {
@@ -357,13 +422,26 @@
                     window.addEventListener('deviceorientation', handleOrientation);
                     orientationListening = true;
                 }
+                if (!orientationChangeListening) {
+                    window.addEventListener('orientationchange', () => {
+                        if (inputMode === 'gyro') {
+                            lastLandscapeState = isLandscapeOrientation();
+                            calibrateGyro('Automatisch gekalibreerd');
+                        }
+                    });
+                    orientationChangeListening = true;
+                }
+
+                lastLandscapeState = isLandscapeOrientation();
                 // kalibreer meteen
-                zeroBeta = currentBeta;
-                zeroGamma = currentGamma;
+                calibrateGyro();
                 // stuur elke 16ms aim
                 stopGyroInterval();
                 gyroInterval = setInterval(() => {
-                    if (inputMode === 'gyro') sendAim(getGyroAim().x, getGyroAim().y);
+                    if (inputMode === 'gyro') {
+                        const aim = getGyroAim();
+                        sendAim(aim.x, aim.y);
+                    }
                 }, 16);
             }
 
