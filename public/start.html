@@ -191,6 +191,8 @@
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
+            position: relative;
+            z-index: 5;
         }
 
         .btn {
@@ -206,6 +208,9 @@
             border: 1px solid transparent;
             transition: transform 0.2s ease, filter 0.2s ease;
             cursor: pointer;
+            position: relative;
+            z-index: 6;
+            pointer-events: auto;
         }
 
         .btn:hover {
@@ -285,8 +290,8 @@
         </div>
 
         <div class="buttons">
-            <a href="index.html" class="btn btn-primary">🎮 Start Game</a>
-            <button class="btn btn-secondary" onclick="copyUrl()">📋 Kopieer URL</button>
+            <button id="start-game-btn" class="btn btn-primary" type="button">Start Game</button>
+            <button class="btn btn-secondary" type="button" onclick="copyUrl()">Kopieer URL</button>
         </div>
     </div>
 
@@ -421,10 +426,19 @@
             }
         }
 
+        function startGame() {
+            window.location.href = 'index.html';
+        }
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             generateQRCode();
             checkConnectionStatus();
+
+            const startBtn = document.getElementById('start-game-btn');
+            if (startBtn) {
+                startBtn.addEventListener('click', startGame);
+            }
         });
     </script>
 </body>
