@@ -194,12 +194,11 @@
 
         <!-- UI Elements -->
         <div id="ui-overlay">
-            <div id="score">Score: <span id="score-value">0</span></div>
-            <div id="ammo">Ammo: <span id="ammo-value">0</span></div>
-            <!-- Nieuw: wave indicator naast score en ammo -->
-            <div id="wave">Wave: <span id="wave-value">1</span></div>
-            <div id="connection-status">Status: <span id="status-text">Verbonden</span></div>
-            <a href="start.html" id="back-to-start" class="back-btn">← Terug naar Start</a>
+            <div id="score" class="hud-item"><span class="hud-label">SCORE</span><span id="score-value" class="hud-value score-value">0</span></div>
+            <div id="ammo" class="hud-item"><span class="hud-label">AMMO</span><span id="ammo-value" class="hud-value ammo-value">0</span></div>
+            <div id="wave" class="hud-item"><span class="hud-label">WAVE</span><span id="wave-value" class="hud-value wave-value">1</span></div>
+            <div id="connection-status" class="status-pill"><span id="status-text">Controller verbonden</span></div>
+            <a href="start.html" id="back-to-start" class="back-btn">← Terug</a>
         </div>
     </div>
 

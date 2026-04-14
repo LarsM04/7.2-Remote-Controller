@@ -1,31 +1,21 @@
-/* VOOR: */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@600;700&display=swap');
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
-    touch-action: none;  /* <-- dit is de boosdoener */
 }
 
-/* NA: */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    /* touch-action weghalen hier, per element instellen */
-}
-
-/* Alleen trackpad krijgt touch-action: none */
-#trackpad {
-    touch-action: none;
-}
-
-/* Knoppen krijgen manipulation zodat tap werkt */
-button {
-    touch-action: manipulation;
+:root {
+    --bg-dark: #0d1b2a;
+    --panel-dark: #101a2b;
+    --accent-cyan: #00e5ff;
+    --accent-yellow: #f1c40f;
+    --accent-green: #2ecc71;
+    --accent-red: #e74c3c;
+    --label-gray: #91a4ba;
 }
 
 html, body {
@@ -34,16 +24,42 @@ html, body {
 }
 
 body {
-    background: radial-gradient(ellipse at center, #1e3a5f 0%, #0d1b2a 70%, #05111a 100%);
     min-height: 100vh;
-    font-family: 'Segoe UI', Arial, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #173150 0%, var(--bg-dark) 58%, #08111c 100%);
+    color: #ebf4ff;
+    font-family: 'Rajdhani', sans-serif;
+    padding: 12px;
 }
 
 #controller-wrapper {
-    height: 100vh;
+    height: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(13, 27, 42, 0.95), rgba(8, 16, 26, 0.98));
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45), 0 12px 36px rgba(0, 0, 0, 0.35);
     display: flex;
     flex-direction: column;
-    position: relative;
+    padding: 12px;
+    gap: 10px;
+}
+
+#controller-hud {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(46, 204, 113, 0.55);
+    background: rgba(46, 204, 113, 0.2);
+    color: #8ef8bc;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 8px 14px;
 }
 
 #main-area {
@@ -51,23 +67,40 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 30px 20px 60px;
-    gap: 30px;
+    gap: 28px;
+    min-height: 0;
+}
+
+#trackpad-shell {
+    flex: 1;
+    max-width: 620px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
 }
 
 #trackpad {
-    width: 60%;
-    max-width: 400px;
-    aspect-ratio: 1;
-    max-height: 70vh;
-    background: rgba(15, 25, 45, 0.7);
-    border-radius: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    touch-action: none;
+    -webkit-touch-callout: none;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    background: linear-gradient(180deg, rgba(17, 33, 52, 0.98), rgba(10, 19, 30, 0.96));
+    border: 1px solid rgba(0, 229, 255, 0.26);
+    border-radius: 20px;
     position: relative;
-    cursor: crosshair;
-    box-shadow: 
-        inset 0 2px 20px rgba(0, 0, 0, 0.3),
-        0 4px 30px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    box-shadow: inset 0 0 45px rgba(0, 0, 0, 0.55), 0 10px 28px rgba(0, 0, 0, 0.3);
+}
+
+#trackpad::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 34px 34px;
+    pointer-events: none;
 }
 
 #trackpad-center {
@@ -75,104 +108,62 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: rgba(255, 255, 255, 0.15);
-    font-size: 48px;
-    font-weight: 300;
+    color: rgba(0, 229, 255, 0.45);
+    text-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+    font: 800 70px/1 'Orbitron', monospace;
     pointer-events: none;
 }
 
 #trackpad-indicator {
-    width: 60px;
-    height: 60px;
-    background: radial-gradient(circle, rgba(0, 212, 255, 0.3) 0%, rgba(0, 212, 255, 0.1) 70%, transparent 100%);
-    border: 2px solid rgba(0, 212, 255, 0.5);
+    width: 62px;
+    height: 62px;
+    background: radial-gradient(circle, rgba(0, 229, 255, 0.35) 0%, rgba(0, 229, 255, 0.14) 70%, transparent 100%);
+    border: 2px solid rgba(0, 229, 255, 0.7);
     border-radius: 50%;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     opacity: 0;
-    transition: opacity 0.15s ease;
+    transition: opacity 0.12s ease;
     pointer-events: none;
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
 }
 
 #trackpad.active #trackpad-indicator {
     opacity: 1;
 }
 
+#trackpad-subtext {
+    color: #8298b1;
+    font: 700 12px/1 'Orbitron', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
 #shoot-btn {
-    width: 140px;
-    height: 140px;
-    background: linear-gradient(145deg, #e63946 0%, #b82d38 100%);
+    touch-action: manipulation;
+    width: 154px;
+    height: 154px;
     border: none;
     border-radius: 50%;
-    color: white;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 3px;
+    background: radial-gradient(circle at 35% 30%, #ff6b5d 0%, var(--accent-red) 45%, #b73126 100%);
+    color: #fff;
+    font: 800 26px/1 'Orbitron', monospace;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    cursor: pointer;
-    box-shadow: 
-        0 8px 30px rgba(230, 57, 70, 0.4),
-        inset 0 2px 10px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 32px rgba(231, 76, 60, 0.42), inset 0 2px 10px rgba(255, 255, 255, 0.28);
     transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 #shoot-btn:active {
     transform: scale(0.95);
-    box-shadow: 
-        0 4px 15px rgba(230, 57, 70, 0.3),
-        inset 0 2px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 5px 20px rgba(231, 76, 60, 0.3), inset 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 #shoot-btn.firing {
-    background: linear-gradient(145deg, #ff4d5a 0%, #d63d48 100%);
-    box-shadow: 
-        0 8px 40px rgba(230, 57, 70, 0.6),
-        inset 0 2px 10px rgba(255, 255, 255, 0.3),
-        0 0 30px rgba(230, 57, 70, 0.3);
-}
-
-#help-btn {
-    position: absolute;
-    right: 20px;
-    bottom: 80px;
-    width: 36px;
-    height: 36px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 18px;
-    font-weight: 400;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-#help-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: rgba(255, 255, 255, 0.8);
-}
-
-#status-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 50px;
-    background: rgba(8, 15, 25, 0.95);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#connection-status {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
+    box-shadow: 0 10px 36px rgba(231, 76, 60, 0.6), 0 0 28px rgba(231, 76, 60, 0.4), inset 0 2px 12px rgba(255, 255, 255, 0.35);
 }
 
 #manual-connection {
@@ -180,86 +171,89 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    padding: 25px;
-    background: rgba(15, 25, 45, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    text-align: center;
+    padding: 22px;
+    width: min(92vw, 360px);
+    background: rgba(16, 26, 43, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
     z-index: 100;
+    font-family: 'Rajdhani', sans-serif;
 }
 
 #manual-connection p {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-    margin-bottom: 15px;
+    color: #b8c8dc;
+    font-size: 16px;
+    margin-bottom: 12px;
 }
 
 #server-ip {
     width: 100%;
-    padding: 12px 15px;
+    padding: 11px 12px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(4, 9, 15, 0.8);
     color: #fff;
-    font-size: 14px;
-    margin-bottom: 12px;
-}
-
-#server-ip::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    font-size: 16px;
+    margin-bottom: 10px;
 }
 
 #connect-btn {
     width: 100%;
-    padding: 12px 20px;
-    background: linear-gradient(145deg, #00d4ff 0%, #0099cc 100%);
+    padding: 11px 12px;
     border: none;
     border-radius: 8px;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-#connect-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
-}
-
-@media (max-width: 500px) {
-    #main-area {
-        padding: 20px 15px 50px;
-        gap: 20px;
-    }
-    
-    #trackpad {
-        width: 55%;
-        max-height: 60vh;
-    }
-    
-    #trackpad-center {
-        font-size: 36px;
-    }
-    
-    #shoot-btn {
-        width: 110px;
-        height: 110px;
-        font-size: 18px;
-    }
-    
-    #connection-status {
-        font-size: 9px;
-        letter-spacing: 1px;
-    }
-}
-
-/* Trackpad touch fix */
-#trackpad {
-    touch-action: none;
-    -webkit-touch-callout: none;
-}
-
-#shoot-btn, #help-btn {
+    background: linear-gradient(180deg, #24dcff 0%, #08a9c7 100%);
+    color: #062431;
+    font: 700 15px/1 'Orbitron', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     touch-action: manipulation;
+}
+
+@media (max-width: 820px) {
+    #main-area {
+        flex-direction: column;
+        gap: 16px;
+        align-items: stretch;
+    }
+
+    #trackpad-shell {
+        width: 100%;
+    }
+
+    #trackpad {
+        aspect-ratio: 4 / 3;
+        min-height: 240px;
+    }
+
+    #shoot-btn {
+        width: 130px;
+        height: 130px;
+        align-self: center;
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 520px) {
+    body {
+        padding: 8px;
+    }
+
+    #controller-wrapper {
+        border-radius: 14px;
+        padding: 10px;
+    }
+
+    .status-pill {
+        font-size: 10px;
+    }
+
+    #trackpad-center {
+        font-size: 58px;
+    }
+
+    #trackpad-subtext {
+        font-size: 10px;
+        letter-spacing: 1.5px;
+    }
 }

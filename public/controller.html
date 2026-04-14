@@ -8,19 +8,20 @@
 </head>
 <body>
     <div id="controller-wrapper">
+        <header id="controller-hud">
+            <span id="connection-status" class="status-pill">Controller verbinden...</span>
+        </header>
+
         <div id="main-area">
-            <div id="trackpad">
-                <div id="trackpad-center">+</div>
-                <div id="trackpad-indicator"></div>
+            <div id="trackpad-shell">
+                <div id="trackpad">
+                    <div id="trackpad-center">+</div>
+                    <div id="trackpad-indicator"></div>
+                </div>
+                <p id="trackpad-subtext">GAME ACTIEF — BEWEEG DE TRACKPAD</p>
             </div>
 
             <button id="shoot-btn">SHOOT</button>
-        </div>
-
-        <button id="help-btn">?</button>
-
-        <div id="status-bar">
-            <span id="connection-status">Verbinden...</span>
         </div>
     </div>
 
@@ -51,14 +52,14 @@
                 updateStatus('Verbinden...');
                 ws = new WebSocket(`${protocol}//${host}`);
                 ws.onopen = () => {
-                    updateStatus('Verbonden');
+                    updateStatus('Controller verbonden');
                     ws.send(JSON.stringify({ type: 'register', role: 'controller' }));
                 };
                 ws.onmessage = (e) => {
                     try {
                         const d = JSON.parse(e.data);
-                        if (d.type === 'registered') updateStatus('Verbonden met game');
-                        if (d.type === 'game_connected') updateStatus('Game actief!');
+                        if (d.type === 'registered') updateStatus('Controller verbonden');
+                        if (d.type === 'game_connected') updateStatus('Controller verbonden');
                         if (d.type === 'status') updateStatus(d.message);
                     } catch (err) {}
                 };
