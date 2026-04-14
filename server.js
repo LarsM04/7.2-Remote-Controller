@@ -52,6 +52,7 @@ const wss = new WebSocket.Server({ server });
 const clients = {
     game: null,
     controllers: new Map(),
+    controllerSlots: new Map(),
     startClients: new Set()
 };
 
@@ -72,6 +73,15 @@ function getNextPlayerSlot() {
     for (let playerId = 1; playerId <= MAX_CONTROLLERS; playerId += 1) {
         if (!used.has(playerId)) {
             return playerId;
+        }
+    }
+    return null;
+}
+
+function findControllerById(controllerId) {
+    for (const [controllerWs, controller] of clients.controllers.entries()) {
+        if (controller.controllerId === controllerId) {
+            return { controllerWs, controller };
         }
     }
     return null;
@@ -140,7 +150,22 @@ wss.on('connection', (ws) => {
                         safeSend(ws, { type: 'registered', role: 'game' });
                         broadcastPlayerUpdate();
                     } else if (data.role === 'controller') {
-                        const playerId = getNextPlayerSlot();
+                        const controllerId = typeof data.controllerId === 'string' && data.controllerId.trim()
+                            ? data.controllerId.trim()
+                            : `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+                        const existing = findControllerById(controllerId);
+                        if (existing) {
+                            clients.controllers.delete(existing.controllerWs);
+                            safeSend(existing.controllerWs, { type: 'controller_replaced' });
+                            existing.controllerWs.close();
+                        }
+
+                        let playerId = clients.controllerSlots.get(controllerId) || null;
+                        if (!playerId) {
+                            playerId = getNextPlayerSlot();
+                        }
+
                         if (!playerId) {
                             safeSend(ws, {
                                 type: 'controller_full',
@@ -149,9 +174,10 @@ wss.on('connection', (ws) => {
                             return;
                         }
 
-                        clients.controllers.set(ws, { playerId });
+                        clients.controllerSlots.set(controllerId, playerId);
+                        clients.controllers.set(ws, { playerId, controllerId });
                         console.log(`Controller client registered as player ${playerId}`);
-                        safeSend(ws, { type: 'registered', role: 'controller', playerId });
+                        safeSend(ws, { type: 'registered', role: 'controller', playerId, controllerId });
                         if (clients.game) {
                             safeSend(ws, { type: 'game_connected' });
                         }

@@ -44,6 +44,23 @@
             let ws = null;
             let trackpadActive = false;
             let shootInterval = null;
+            let reconnectTimeout = null;
+
+            function getControllerId() {
+                const key = 'remote-controller-id';
+                let id = localStorage.getItem(key);
+                if (!id) {
+                    if (window.crypto && window.crypto.randomUUID) {
+                        id = window.crypto.randomUUID();
+                    } else {
+                        id = `ctrl-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+                    }
+                    localStorage.setItem(key, id);
+                }
+                return id;
+            }
+
+            const controllerId = getControllerId();
 
             // --- WebSocket ---
             function connectWebSocket(customHost = null) {
@@ -55,7 +72,11 @@
                     updateStatus('Controller verbonden');
                     shootBtn.disabled = false;
                     trackpad.style.opacity = '1';
-                    ws.send(JSON.stringify({ type: 'register', role: 'controller' }));
+                    if (reconnectTimeout) {
+                        clearTimeout(reconnectTimeout);
+                        reconnectTimeout = null;
+                    }
+                    ws.send(JSON.stringify({ type: 'register', role: 'controller', controllerId }));
                 };
             ws.onmessage = (e) => {
                 try {
@@ -76,12 +97,22 @@
                         shootBtn.disabled = true;
                         trackpad.style.opacity = '0.55';
                     }
+                    if (d.type === 'controller_replaced') {
+                        updateStatus('Deze controller is op ander apparaat overgenomen');
+                        shootBtn.disabled = true;
+                        trackpad.style.opacity = '0.55';
+                    }
                     if (d.type === 'status') updateStatus(d.message);
                 } catch (err) {}
             };
                 ws.onclose = () => {
                     updateStatus('Verbroken');
-                    setTimeout(() => connectWebSocket(), 3000);
+                    if (!reconnectTimeout) {
+                        reconnectTimeout = setTimeout(() => {
+                            reconnectTimeout = null;
+                            connectWebSocket();
+                        }, 3000);
+                    }
                 };
                 ws.onerror = () => {
                     updateStatus('Verbindingsfout');
@@ -178,6 +209,10 @@
                 connectBtn.addEventListener('click', () => {
                     const ip = serverIp.value.trim();
                     if (!ip) return;
+                    if (reconnectTimeout) {
+                        clearTimeout(reconnectTimeout);
+                        reconnectTimeout = null;
+                    }
                     if (ws) ws.close();
                     connectWebSocket(`${ip}:3000`);
                 });
