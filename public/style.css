@@ -193,7 +193,8 @@ body {
     left: 20px;
     right: 20px;
     z-index: 70;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
     align-items: center;
     gap: 12px;
     padding: 10px 14px;
@@ -203,6 +204,34 @@ body {
     backdrop-filter: blur(6px);
     pointer-events: none;
     font-family: 'Orbitron', monospace;
+}
+
+.player-hud {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.player-hud-left {
+    justify-content: flex-start;
+}
+
+.player-hud-right {
+    justify-content: flex-end;
+}
+
+.player-hud-title {
+    color: var(--accent-cyan);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.hud-center-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
 }
 
 .hud-item {
@@ -237,13 +266,80 @@ body {
 }
 
 .status-pill {
-    margin-left: auto;
     background: rgba(46, 204, 113, 0.2);
     color: #89f8bb;
     border: 1px solid rgba(46, 204, 113, 0.55);
     border-radius: 999px;
     padding: 8px 14px;
     font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.wave-stats-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 130;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 12, 20, 0.74);
+    pointer-events: none;
+}
+
+.wave-stats-overlay.hidden {
+    display: none;
+}
+
+.wave-stats-card {
+    width: min(92vw, 760px);
+    border-radius: 14px;
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    background: linear-gradient(180deg, rgba(10, 20, 33, 0.96), rgba(6, 12, 21, 0.96));
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+    padding: 20px;
+}
+
+.wave-stats-card h2 {
+    color: #f7b733;
+    font: 800 28px/1 'Orbitron', monospace;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.wave-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.wave-stats-col {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 12px;
+    background: rgba(12, 20, 30, 0.7);
+}
+
+.wave-stats-col h3 {
+    color: var(--accent-cyan);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    font-size: 16px;
+}
+
+.wave-stats-col p {
+    color: #dbe8f7;
+    margin: 6px 0;
+    font-size: 14px;
+}
+
+.wave-team-accuracy {
+    margin-top: 14px;
+    text-align: center;
+    color: #8ef8bc;
+    font-size: 16px;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -267,28 +363,32 @@ body {
     transform: translateY(-1px);
 }
 
-#connection-status, #score, #ammo, #wave {
+#connection-status, #score, #wave, #player-1-hud, #player-2-hud {
     pointer-events: none;
 }
 
 @media (max-width: 900px) {
     #game-container {
-        padding: 120px 12px 12px;
+        padding: 138px 12px 12px;
     }
 
     #ui-overlay {
         top: 10px;
         left: 12px;
         right: 12px;
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px 12px;
-        align-items: center;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
     }
 
-    .status-pill {
-        margin-left: 0;
-        justify-self: start;
+    .player-hud-left,
+    .player-hud-right {
+        justify-content: flex-start;
+    }
+
+    .hud-center-group {
+        grid-column: span 2;
+        justify-content: flex-start;
+        flex-wrap: wrap;
     }
 
     .back-btn {
@@ -298,11 +398,24 @@ body {
     .hud-value {
         font-size: 18px;
     }
+
+    .wave-stats-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 560px) {
     #ui-overlay {
         grid-template-columns: 1fr;
+    }
+
+    .player-hud {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .hud-center-group {
+        grid-column: auto;
     }
 
     .back-btn {
@@ -311,6 +424,6 @@ body {
     }
 
     #game-container {
-        padding-top: 188px;
+        padding-top: 238px;
     }
 }

@@ -199,11 +199,45 @@
 
         <!-- UI Elements -->
         <div id="ui-overlay">
-            <div id="score" class="hud-item"><span class="hud-label">SCORE</span><span id="score-value" class="hud-value score-value">0</span></div>
-            <div id="ammo" class="hud-item"><span class="hud-label">AMMO</span><span id="ammo-value" class="hud-value ammo-value">0</span></div>
-            <div id="wave" class="hud-item"><span class="hud-label">WAVE</span><span id="wave-value" class="hud-value wave-value">1</span></div>
-            <div id="connection-status" class="status-pill"><span id="status-text">Controller verbonden</span></div>
+            <div id="player-1-hud" class="player-hud player-hud-left">
+                <span class="player-hud-title">Speler 1</span>
+                <div class="hud-item"><span class="hud-label">AMMO</span><span id="ammo-value-p1" class="hud-value ammo-value">0</span></div>
+                <div class="hud-item"><span class="hud-label">ACC</span><span id="accuracy-value-p1" class="hud-value">0%</span></div>
+            </div>
+            <div class="hud-center-group">
+                <div id="score" class="hud-item"><span class="hud-label">SCORE</span><span id="score-value" class="hud-value score-value">0</span></div>
+                <div id="wave" class="hud-item"><span class="hud-label">WAVE</span><span id="wave-value" class="hud-value wave-value">1</span></div>
+                <div id="connection-status" class="status-pill"><span id="status-text">Controller verbonden</span></div>
+            </div>
+            <div id="player-2-hud" class="player-hud player-hud-right">
+                <span class="player-hud-title">Speler 2</span>
+                <div class="hud-item"><span class="hud-label">AMMO</span><span id="ammo-value-p2" class="hud-value ammo-value">0</span></div>
+                <div class="hud-item"><span class="hud-label">ACC</span><span id="accuracy-value-p2" class="hud-value">0%</span></div>
+            </div>
             <a href="start.html" id="back-to-start" class="back-btn">← Terug</a>
+        </div>
+
+        <div id="wave-stats-overlay" class="wave-stats-overlay hidden">
+            <div class="wave-stats-card">
+                <h2 id="wave-stats-title">Wave 1 voltooid</h2>
+                <div class="wave-stats-grid">
+                    <div class="wave-stats-col">
+                        <h3>Speler 1</h3>
+                        <p id="wave-p1-shots">Schoten: 0</p>
+                        <p id="wave-p1-hits">Hits: 0</p>
+                        <p id="wave-p1-accuracy">Accuracy: 0%</p>
+                        <p id="wave-p1-ammo-used">Ammo gebruikt: 0</p>
+                    </div>
+                    <div class="wave-stats-col">
+                        <h3>Speler 2</h3>
+                        <p id="wave-p2-shots">Schoten: 0</p>
+                        <p id="wave-p2-hits">Hits: 0</p>
+                        <p id="wave-p2-accuracy">Accuracy: 0%</p>
+                        <p id="wave-p2-ammo-used">Ammo gebruikt: 0</p>
+                    </div>
+                </div>
+                <p id="wave-team-accuracy" class="wave-team-accuracy">Team accuracy: 0%</p>
+            </div>
         </div>
     </div>
 
@@ -236,7 +270,10 @@
                 // --- ENEMY VISUALS: einde ---
 
                 this.scoreValue = document.getElementById('score-value');
-                this.ammoValue = document.getElementById('ammo-value');
+                this.ammoValueP1 = document.getElementById('ammo-value-p1');
+                this.ammoValueP2 = document.getElementById('ammo-value-p2');
+                this.accuracyValueP1 = document.getElementById('accuracy-value-p1');
+                this.accuracyValueP2 = document.getElementById('accuracy-value-p2');
                 this.waveValue = document.getElementById('wave-value');
                 this.statusText = document.getElementById('status-text');
 
@@ -244,10 +281,22 @@
                 this.gameMessage = document.getElementById('game-message');
                 this.bossDefeatFlash = document.getElementById('boss-defeat-flash');
 
+                this.waveStatsOverlay = document.getElementById('wave-stats-overlay');
+                this.waveStatsTitle = document.getElementById('wave-stats-title');
+                this.waveP1Shots = document.getElementById('wave-p1-shots');
+                this.waveP1Hits = document.getElementById('wave-p1-hits');
+                this.waveP1Accuracy = document.getElementById('wave-p1-accuracy');
+                this.waveP1AmmoUsed = document.getElementById('wave-p1-ammo-used');
+                this.waveP2Shots = document.getElementById('wave-p2-shots');
+                this.waveP2Hits = document.getElementById('wave-p2-hits');
+                this.waveP2Accuracy = document.getElementById('wave-p2-accuracy');
+                this.waveP2AmmoUsed = document.getElementById('wave-p2-ammo-used');
+                this.waveTeamAccuracy = document.getElementById('wave-team-accuracy');
+
                 this.score = 0;
                 this.wave = 1;
-                this.ammo = 0;
-
+                this.playerAmmo = { 1: 0, 2: 0 };
+                this.currentWaveStats = this.createEmptyWaveStats();
 
                 this.targets = [];
                 this.gameOver = false;
@@ -286,13 +335,13 @@
                 });
 
                 this.gameArea.addEventListener('click', (e) => {
-                    this.shoot(e.clientX, e.clientY);
+                    this.shoot(1, e.clientX, e.clientY);
                 });
 
                 document.addEventListener('keydown', (e) => {
                     if (e.code === 'Space') {
                         const playerOne = this.crosshairs[1];
-                        this.shoot(playerOne.x, playerOne.y);
+                        this.shoot(1, playerOne.x, playerOne.y);
                     }
                 });
 
@@ -384,12 +433,17 @@
             startWave(waveNumber) {
                 this.waveTransition = true;
                 this.clearTargets();
+                this.hideWaveStatsOverlay();
 
                 this.wave = waveNumber;
                 this.waveValue.textContent = this.wave;
 
-                this.ammo = 10 + this.wave * 2;
+                const ammoPerPlayer = 10 + this.wave * 2;
+                this.playerAmmo[1] = ammoPerPlayer;
+                this.playerAmmo[2] = ammoPerPlayer;
+                this.currentWaveStats = this.createEmptyWaveStats();
                 this.updateAmmoUI();
+                this.updateAccuracyHUD();
 
                 this.showWaveAnnouncement(`Wave ${this.wave}`);
 
@@ -520,30 +574,36 @@
                 this.waveAnnouncement.classList.add('show');
             }
 
-            shoot(x, y) {
+            shoot(playerId, x, y) {
                 if (this.gameOver || this.waveTransition || this.shootCooldown) return;
-                if (this.ammo <= 0) return;
+                if (!this.playerAmmo[playerId] || this.playerAmmo[playerId] <= 0) return;
 
                 this.shootCooldown = true;
                 setTimeout(() => {
                     this.shootCooldown = false;
                 }, 80);
 
-                // Nieuw: ammo wordt per schot verbruikt
-                this.ammo -= 1;
+                this.playerAmmo[playerId] -= 1;
+                this.currentWaveStats[playerId].shots += 1;
+                this.currentWaveStats[playerId].ammoUsed += 1;
                 this.updateAmmoUI();
 
                 this.createShotEffect(x, y);
 
                 const hitTarget = this.checkTargetHit(x, y);
                 if (hitTarget) {
-                    this.hitTarget(hitTarget);
+                    this.hitTarget(playerId, hitTarget);
                 }
 
+                this.updateAccuracyHUD();
                 this.playShootSound();
 
-                // Nieuw: game over wanneer ammo op is en wave nog niet leeg
-                if (this.ammo <= 0 && this.targets.length > 0) {
+                const noAmmoLeft = [1, 2].every((id) => {
+                    const active = this.activePlayers.has(id) || id === 1;
+                    return !active || this.playerAmmo[id] <= 0;
+                });
+
+                if (noAmmoLeft && this.targets.length > 0) {
                     this.triggerGameOver('Game Over - geen ammo meer');
                 }
             }
@@ -567,10 +627,10 @@
             }
 
             // Nieuw: aparte hit-afhandeling voor normale target en boss hp
-            hitTarget(target) {
-                // --- ENEMY VISUALS: nieuw ---
+            hitTarget(playerId, target) {
                 const now = performance.now();
-                // --- ENEMY VISUALS: einde ---
+                this.currentWaveStats[playerId].hits += 1;
+                this.updateAccuracyHUD();
 
                 if (target.type === 'boss') {
                     target.hp -= 1;
@@ -583,19 +643,15 @@
                         this.score += 500;
                         this.scoreValue.textContent = this.score;
 
-                        // --- ENEMY VISUALS: nieuw ---
                         target.isDead = true;
                         this.spawnDeathEffect(target);
-                        // --- ENEMY VISUALS: einde ---
 
                         this.triggerBossDefeatFeedback();
                         this.removeTarget(target);
                         this.checkWaveClear();
                     } else {
-                        // --- ENEMY VISUALS: nieuw ---
                         target.lastHitTime = now;
                         target.hitFlashUntil = now + 100;
-                        // --- ENEMY VISUALS: einde ---
                     }
                     return;
                 }
@@ -604,7 +660,6 @@
                 this.score += 10;
                 this.scoreValue.textContent = this.score;
 
-                // --- ENEMY VISUALS: nieuw ---
                 target.lastHitTime = now;
                 target.hitFlashUntil = now + 100;
                 setTimeout(() => {
@@ -613,7 +668,6 @@
                     this.removeTarget(target);
                     this.checkWaveClear();
                 }, 220);
-                // --- ENEMY VISUALS: einde ---
             }
 
             removeTarget(target) {
@@ -634,9 +688,10 @@
                 if (this.targets.length !== 0) return;
 
                 this.waveTransition = true;
+                this.showWaveStatsOverlay(this.wave);
                 setTimeout(() => {
                     this.startWave(this.wave + 1);
-                }, 500);
+                }, 2600);
             }
 
             startGameLoop() {
@@ -875,7 +930,53 @@
             }
 
             updateAmmoUI() {
-                this.ammoValue.textContent = this.ammo;
+                this.ammoValueP1.textContent = this.playerAmmo[1];
+                this.ammoValueP2.textContent = this.playerAmmo[2];
+            }
+
+            calculateAccuracy(playerId) {
+                const stats = this.currentWaveStats[playerId];
+                if (!stats || stats.shots === 0) return 0;
+                return Math.round((stats.hits / stats.shots) * 100);
+            }
+
+            updateAccuracyHUD() {
+                this.accuracyValueP1.textContent = `${this.calculateAccuracy(1)}%`;
+                this.accuracyValueP2.textContent = `${this.calculateAccuracy(2)}%`;
+            }
+
+            createEmptyWaveStats() {
+                return {
+                    1: { shots: 0, hits: 0, ammoUsed: 0 },
+                    2: { shots: 0, hits: 0, ammoUsed: 0 }
+                };
+            }
+
+            showWaveStatsOverlay(waveNumber) {
+                const p1 = this.currentWaveStats[1];
+                const p2 = this.currentWaveStats[2];
+
+                this.waveStatsTitle.textContent = `Wave ${waveNumber} voltooid`;
+                this.waveP1Shots.textContent = `Schoten: ${p1.shots}`;
+                this.waveP1Hits.textContent = `Hits: ${p1.hits}`;
+                this.waveP1Accuracy.textContent = `Accuracy: ${this.calculateAccuracy(1)}%`;
+                this.waveP1AmmoUsed.textContent = `Ammo gebruikt: ${p1.ammoUsed}`;
+
+                this.waveP2Shots.textContent = `Schoten: ${p2.shots}`;
+                this.waveP2Hits.textContent = `Hits: ${p2.hits}`;
+                this.waveP2Accuracy.textContent = `Accuracy: ${this.calculateAccuracy(2)}%`;
+                this.waveP2AmmoUsed.textContent = `Ammo gebruikt: ${p2.ammoUsed}`;
+
+                const teamShots = p1.shots + p2.shots;
+                const teamHits = p1.hits + p2.hits;
+                const teamAccuracy = teamShots > 0 ? Math.round((teamHits / teamShots) * 100) : 0;
+                this.waveTeamAccuracy.textContent = `Team accuracy: ${teamAccuracy}%`;
+
+                this.waveStatsOverlay.classList.remove('hidden');
+            }
+
+            hideWaveStatsOverlay() {
+                this.waveStatsOverlay.classList.add('hidden');
             }
 
             updateCrosshairPosition(playerId) {
@@ -927,6 +1028,11 @@
                     state.element.style.display = visible ? 'block' : 'none';
                 });
 
+                const playerTwoHud = document.getElementById('player-2-hud');
+                if (playerTwoHud) {
+                    playerTwoHud.style.opacity = this.activePlayers.has(2) ? '1' : '0.45';
+                }
+
                 const amount = playerIds.length;
                 if (amount === 0) {
                     this.updateConnectionStatus('Wachten op spelers...');
@@ -940,7 +1046,7 @@
             shootFromController(playerId) {
                 const state = this.crosshairs[playerId];
                 if (!state) return;
-                this.shoot(state.x, state.y);
+                this.shoot(playerId, state.x, state.y);
             }
 
             playShootSound() {
