@@ -4,6 +4,7 @@ const path = require('path');
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 3000;
+const MAX_CONTROLLERS = 2;
 
 const mimeTypes = {
     '.html': 'text/html',
@@ -20,10 +21,10 @@ const mimeTypes = {
 const server = http.createServer((req, res) => {
     let filePath = req.url === '/' ? '/start.html' : req.url;
     filePath = path.join(__dirname, 'public', filePath);
-    
+
     const extname = path.extname(filePath).toLowerCase();
     const contentType = mimeTypes[extname] || 'application/octet-stream';
-    
+
     fs.readFile(filePath, (err, content) => {
         if (err) {
             if (err.code === 'ENOENT') {
@@ -50,8 +51,62 @@ const wss = new WebSocket.Server({ server });
 
 const clients = {
     game: null,
-    controller: null
+    controllers: new Map(),
+    startClients: new Set()
 };
+
+function safeSend(ws, payload) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
+    }
+}
+
+function getConnectedPlayerIds() {
+    return [...clients.controllers.values()]
+        .map((controller) => controller.playerId)
+        .sort((a, b) => a - b);
+}
+
+function getNextPlayerSlot() {
+    const used = new Set(getConnectedPlayerIds());
+    for (let playerId = 1; playerId <= MAX_CONTROLLERS; playerId += 1) {
+        if (!used.has(playerId)) {
+            return playerId;
+        }
+    }
+    return null;
+}
+
+function broadcastPlayerUpdate() {
+    const playerIds = getConnectedPlayerIds();
+    const payload = {
+        type: 'player_update',
+        count: playerIds.length,
+        maxPlayers: MAX_CONTROLLERS,
+        playerIds
+    };
+
+    safeSend(clients.game, payload);
+
+    clients.startClients.forEach((ws) => {
+        safeSend(ws, payload);
+    });
+
+    clients.controllers.forEach((controller, ws) => {
+        safeSend(ws, {
+            ...payload,
+            yourPlayerId: controller.playerId
+        });
+    });
+
+    if (clients.game) {
+        if (playerIds.length > 0) {
+            safeSend(clients.game, { type: 'controller_connected', count: playerIds.length });
+        } else {
+            safeSend(clients.game, { type: 'controller_disconnected' });
+        }
+    }
+}
 
 function getLocalIPs() {
     const { networkInterfaces } = require('os');
@@ -69,62 +124,99 @@ function getLocalIPs() {
 
 wss.on('connection', (ws) => {
     console.log('New client connected');
-    
+
     const ips = getLocalIPs();
-    ws.send(JSON.stringify({ type: 'server_info', ips: ips, port: PORT }));
-    
+    safeSend(ws, { type: 'server_info', ips, port: PORT });
+
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
-            
+
             switch (data.type) {
-                case 'register':
+                case 'register': {
                     if (data.role === 'game') {
                         clients.game = ws;
                         console.log('Game client registered');
-                        ws.send(JSON.stringify({ type: 'registered', role: 'game' }));
-                        if (clients.controller) {
-                            ws.send(JSON.stringify({ type: 'controller_connected' }));
-                            clients.controller.send(JSON.stringify({ type: 'game_connected' }));
-                        }
+                        safeSend(ws, { type: 'registered', role: 'game' });
+                        broadcastPlayerUpdate();
                     } else if (data.role === 'controller') {
-                        clients.controller = ws;
-                        console.log('Controller client registered');
-                        ws.send(JSON.stringify({ type: 'registered', role: 'controller' }));
-                        if (clients.game) {
-                            clients.game.send(JSON.stringify({ type: 'controller_connected' }));
-                            ws.send(JSON.stringify({ type: 'game_connected' }));
+                        const playerId = getNextPlayerSlot();
+                        if (!playerId) {
+                            safeSend(ws, {
+                                type: 'controller_full',
+                                message: 'Alle speler-slots zijn bezet'
+                            });
+                            return;
                         }
-                    }
-                    break;
-                    
-                case 'move':
-                    if (clients.game && ws === clients.controller) {
-                        if (data.x !== undefined && data.y !== undefined) {
-                            clients.game.send(JSON.stringify({ type: 'move', x: data.x, y: data.y }));
-                        } else {
-                            clients.game.send(JSON.stringify({ type: 'move', deltaX: data.deltaX, deltaY: data.deltaY }));
-                        }
-                    }
-                    break;
 
-                case 'aim':
-                    if (clients.game && ws === clients.controller) {
-                        clients.game.send(JSON.stringify({ type: 'aim', x: data.x, y: data.y }));
+                        clients.controllers.set(ws, { playerId });
+                        console.log(`Controller client registered as player ${playerId}`);
+                        safeSend(ws, { type: 'registered', role: 'controller', playerId });
+                        if (clients.game) {
+                            safeSend(ws, { type: 'game_connected' });
+                        }
+                        broadcastPlayerUpdate();
+                    } else if (data.role === 'start') {
+                        clients.startClients.add(ws);
+                        safeSend(ws, { type: 'registered', role: 'start' });
+                        broadcastPlayerUpdate();
                     }
                     break;
-                    
-                case 'shoot':
-                    if (clients.game && ws === clients.controller) {
-                        clients.game.send(JSON.stringify({ type: 'shoot' }));
+                }
+
+                case 'move': {
+                    const controller = clients.controllers.get(ws);
+                    if (clients.game && controller) {
+                        if (data.x !== undefined && data.y !== undefined) {
+                            safeSend(clients.game, {
+                                type: 'move',
+                                playerId: controller.playerId,
+                                x: data.x,
+                                y: data.y
+                            });
+                        } else {
+                            safeSend(clients.game, {
+                                type: 'move',
+                                playerId: controller.playerId,
+                                deltaX: data.deltaX,
+                                deltaY: data.deltaY
+                            });
+                        }
                     }
                     break;
-                    
+                }
+
+                case 'aim': {
+                    const controller = clients.controllers.get(ws);
+                    if (clients.game && controller) {
+                        safeSend(clients.game, {
+                            type: 'aim',
+                            playerId: controller.playerId,
+                            x: data.x,
+                            y: data.y
+                        });
+                    }
+                    break;
+                }
+
+                case 'shoot': {
+                    const controller = clients.controllers.get(ws);
+                    if (clients.game && controller) {
+                        safeSend(clients.game, {
+                            type: 'shoot',
+                            playerId: controller.playerId
+                        });
+                    }
+                    break;
+                }
+
                 case 'status':
-                    if (data.role === 'game' && clients.controller) {
-                        clients.controller.send(JSON.stringify({ type: 'status', message: data.message }));
+                    if (data.role === 'game') {
+                        clients.controllers.forEach((_, controllerWs) => {
+                            safeSend(controllerWs, { type: 'status', message: data.message });
+                        });
                     } else if (data.role === 'controller' && clients.game) {
-                        clients.game.send(JSON.stringify({ type: 'status', message: data.message }));
+                        safeSend(clients.game, { type: 'status', message: data.message });
                     }
                     break;
             }
@@ -132,19 +224,24 @@ wss.on('connection', (ws) => {
             console.error('Error parsing message:', e);
         }
     });
-    
+
     ws.on('close', () => {
         console.log('Client disconnected');
+
         if (ws === clients.game) {
             clients.game = null;
-        } else if (ws === clients.controller) {
-            clients.controller = null;
-            if (clients.game) {
-                clients.game.send(JSON.stringify({ type: 'controller_disconnected' }));
-            }
+        }
+
+        if (clients.controllers.has(ws)) {
+            clients.controllers.delete(ws);
+            broadcastPlayerUpdate();
+        }
+
+        if (clients.startClients.has(ws)) {
+            clients.startClients.delete(ws);
         }
     });
-    
+
     ws.on('error', (error) => {
         console.error('WebSocket error:', error);
     });
@@ -152,7 +249,7 @@ wss.on('connection', (ws) => {
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    
+
     const { networkInterfaces } = require('os');
     const nets = networkInterfaces();
     console.log('\nAvailable on:');

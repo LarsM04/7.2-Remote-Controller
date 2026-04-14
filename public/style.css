@@ -54,7 +54,7 @@ body {
     overflow: hidden;
 }
 
-#crosshair {
+.crosshair-player {
     position: absolute;
     width: 40px;
     height: 40px;
@@ -63,6 +63,10 @@ body {
     transform: translate(-50%, -50%);
     left: 50%;
     top: 50%;
+}
+
+.crosshair-player-2 {
+    z-index: 101;
 }
 
 .crosshair-line {
@@ -95,6 +99,16 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     box-shadow: 0 0 8px rgba(0, 229, 255, 0.9);
+}
+
+.crosshair-player-2 .crosshair-line {
+    background-color: #f1c40f;
+    box-shadow: 0 0 8px rgba(241, 196, 15, 0.85);
+}
+
+.crosshair-player-2 .crosshair-dot {
+    background-color: #f1c40f;
+    box-shadow: 0 0 8px rgba(241, 196, 15, 0.9);
 }
 
 .target {

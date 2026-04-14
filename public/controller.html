@@ -53,16 +53,32 @@
                 ws = new WebSocket(`${protocol}//${host}`);
                 ws.onopen = () => {
                     updateStatus('Controller verbonden');
+                    shootBtn.disabled = false;
+                    trackpad.style.opacity = '1';
                     ws.send(JSON.stringify({ type: 'register', role: 'controller' }));
                 };
-                ws.onmessage = (e) => {
-                    try {
-                        const d = JSON.parse(e.data);
-                        if (d.type === 'registered') updateStatus('Controller verbonden');
-                        if (d.type === 'game_connected') updateStatus('Controller verbonden');
-                        if (d.type === 'status') updateStatus(d.message);
-                    } catch (err) {}
-                };
+            ws.onmessage = (e) => {
+                try {
+                    const d = JSON.parse(e.data);
+                    if (d.type === 'registered') {
+                        const idLabel = d.playerId ? `Speler ${d.playerId}` : 'Controller';
+                        updateStatus(`${idLabel} verbonden`);
+                    }
+                    if (d.type === 'game_connected') updateStatus('Game verbonden');
+                    if (d.type === 'player_update') {
+                        const count = d.count || 0;
+                        const max = d.maxPlayers || 2;
+                        const your = d.yourPlayerId ? ` (jij: speler ${d.yourPlayerId})` : '';
+                        updateStatus(`${count}/${max} spelers actief${your}`);
+                    }
+                    if (d.type === 'controller_full') {
+                        updateStatus('Lobby vol (2 spelers)');
+                        shootBtn.disabled = true;
+                        trackpad.style.opacity = '0.55';
+                    }
+                    if (d.type === 'status') updateStatus(d.message);
+                } catch (err) {}
+            };
                 ws.onclose = () => {
                     updateStatus('Verbroken');
                     setTimeout(() => connectWebSocket(), 3000);

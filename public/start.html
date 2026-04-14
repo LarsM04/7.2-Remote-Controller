@@ -273,7 +273,15 @@
 
         <div class="connection-status status-waiting" id="connection-status">
             <span class="loading"></span>
-            Wachten op controller...
+            Wachten op spelers...
+        </div>
+
+        <div class="instructions" style="margin-top: 14px; margin-bottom: 20px;">
+            <h3>Spelers</h3>
+            <ol id="players-list">
+                <li id="player-slot-1">Speler 1: niet verbonden</li>
+                <li id="player-slot-2">Speler 2: niet verbonden</li>
+            </ol>
         </div>
 
         <div class="buttons">
@@ -348,7 +356,7 @@
             });
         }
 
-        // Check controller connection status
+        // Check speler-verbindingen op startscherm
         function checkConnectionStatus() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}`;
@@ -356,10 +364,9 @@
             const ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
-                // Register as game client to check status
                 ws.send(JSON.stringify({
                     type: 'register',
-                    role: 'game'
+                    role: 'start'
                 }));
             };
 
@@ -367,10 +374,10 @@
                 try {
                     const data = JSON.parse(event.data);
 
-                    if (data.type === 'controller_connected') {
-                        updateStatus('connected', 'Controller verbonden');
+                    if (data.type === 'player_update') {
+                        updatePlayerStatus(data.playerIds || [], data.maxPlayers || 2);
                     } else if (data.type === 'registered') {
-                        updateStatus('waiting', 'Wachten op controller...');
+                        updateStatus('waiting', 'Wachten op spelers...');
                     }
                 } catch (e) {
                     console.error('Error parsing message:', e);
@@ -384,6 +391,23 @@
             ws.onerror = () => {
                 updateStatus('disconnected', 'Verbindingsfout');
             };
+        }
+
+        function updatePlayerStatus(playerIds, maxPlayers) {
+            const connectedSet = new Set(playerIds);
+            for (let i = 1; i <= maxPlayers; i++) {
+                const slot = document.getElementById(`player-slot-${i}`);
+                if (!slot) continue;
+                slot.textContent = connectedSet.has(i)
+                    ? `Speler ${i}: verbonden`
+                    : `Speler ${i}: niet verbonden`;
+            }
+
+            if (playerIds.length === 0) {
+                updateStatus('waiting', 'Wachten op spelers...');
+            } else {
+                updateStatus('connected', `${playerIds.length}/${maxPlayers} spelers verbonden`);
+            }
         }
 
         function updateStatus(status, message) {

@@ -166,8 +166,13 @@
 
         <!-- Game area -->
         <div id="game-area">
-            <!-- Crosshair -->
-            <div id="crosshair">
+            <!-- Crosshairs -->
+            <div id="crosshair" class="crosshair-player crosshair-player-1">
+                <div class="crosshair-line horizontal"></div>
+                <div class="crosshair-line vertical"></div>
+                <div class="crosshair-dot"></div>
+            </div>
+            <div id="crosshair-2" class="crosshair-player crosshair-player-2">
                 <div class="crosshair-line horizontal"></div>
                 <div class="crosshair-line vertical"></div>
                 <div class="crosshair-dot"></div>
@@ -206,7 +211,19 @@
         // Nieuw: volledige game-logica inclusief wave systeem, boss waves en ammo per wave
         class Game {
             constructor() {
-                this.crosshair = document.getElementById('crosshair');
+                this.crosshairs = {
+                    1: {
+                        element: document.getElementById('crosshair'),
+                        x: window.innerWidth / 2,
+                        y: window.innerHeight / 2
+                    },
+                    2: {
+                        element: document.getElementById('crosshair-2'),
+                        x: window.innerWidth / 2,
+                        y: window.innerHeight / 2
+                    }
+                };
+                this.activePlayers = new Set([1]);
                 this.gameArea = document.getElementById('game-area');
                 this.targetsContainer = document.getElementById('targets-container');
                 this.shotEffects = document.getElementById('shot-effects');
@@ -231,8 +248,6 @@
                 this.wave = 1;
                 this.ammo = 0;
 
-                this.crosshairX = window.innerWidth / 2;
-                this.crosshairY = window.innerHeight / 2;
 
                 this.targets = [];
                 this.gameOver = false;
@@ -250,7 +265,9 @@
             init() {
                 this.setupEventListeners();
                 this.connectWebSocket();
-                this.updateCrosshairPosition();
+                this.updateConnectedPlayers([1]);
+                this.updateCrosshairPosition(1);
+                this.updateCrosshairPosition(2);
 
                 // --- ENEMY VISUALS: nieuw ---
                 this.resizeEnemyCanvas();
@@ -265,9 +282,7 @@
 
             setupEventListeners() {
                 this.gameArea.addEventListener('mousemove', (e) => {
-                    this.crosshairX = e.clientX;
-                    this.crosshairY = e.clientY;
-                    this.updateCrosshairPosition();
+                    this.setCrosshairPosition(1, e.clientX, e.clientY);
                 });
 
                 this.gameArea.addEventListener('click', (e) => {
@@ -276,14 +291,21 @@
 
                 document.addEventListener('keydown', (e) => {
                     if (e.code === 'Space') {
-                        this.shoot(this.crosshairX, this.crosshairY);
+                        const playerOne = this.crosshairs[1];
+                        this.shoot(playerOne.x, playerOne.y);
                     }
                 });
 
                 window.addEventListener('resize', () => {
-                    this.crosshairX = Math.min(this.crosshairX, window.innerWidth);
-                    this.crosshairY = Math.min(this.crosshairY, window.innerHeight);
-                    this.updateCrosshairPosition();
+                    Object.keys(this.crosshairs).forEach((playerIdKey) => {
+                        const playerId = Number(playerIdKey);
+                        const state = this.crosshairs[playerId];
+                        this.setCrosshairPosition(
+                            playerId,
+                            Math.min(state.x, window.innerWidth),
+                            Math.min(state.y, window.innerHeight)
+                        );
+                    });
 
                     // --- ENEMY VISUALS: nieuw ---
                     this.resizeEnemyCanvas();
@@ -308,29 +330,36 @@
 
                         switch (data.type) {
                             case 'registered':
-                                this.updateConnectionStatus('Wachten op controller...');
+                                this.updateConnectionStatus('Wachten op spelers...');
                                 break;
                             case 'controller_connected':
-                                this.updateConnectionStatus('Controller verbonden!');
+                                this.updateConnectionStatus('Speler verbonden');
                                 break;
                             case 'controller_disconnected':
-                                this.updateConnectionStatus('Controller verbroken');
+                                this.updateConnectionStatus('Speler verbroken');
                                 break;
-                            case 'move':
+                            case 'player_update':
+                                this.updateConnectedPlayers(data.playerIds || []);
+                                break;
+                            case 'move': {
+                                const playerId = data.playerId || 1;
                                 if (data.x !== undefined && data.y !== undefined) {
-                                    this.setCrosshairFromAbsolute(data.x, data.y);
+                                    this.setCrosshairFromAbsolute(playerId, data.x, data.y);
                                 } else {
-                                    this.updateCrosshairFromController(data.deltaX || 0, data.deltaY || 0);
+                                    this.updateCrosshairFromController(playerId, data.deltaX || 0, data.deltaY || 0);
                                 }
                                 break;
+                            }
                             // Nieuw: expliciete ondersteuning voor { type: "aim", x, y }
-                            case 'aim':
+                            case 'aim': {
+                                const playerId = data.playerId || 1;
                                 if (data.x !== undefined && data.y !== undefined) {
-                                    this.setCrosshairFromAbsolute(data.x, data.y);
+                                    this.setCrosshairFromAbsolute(playerId, data.x, data.y);
                                 }
                                 break;
+                            }
                             case 'shoot':
-                                this.shootFromController();
+                                this.shootFromController(data.playerId || 1);
                                 break;
                             case 'status':
                                 this.updateConnectionStatus(data.message);
@@ -849,31 +878,69 @@
                 this.ammoValue.textContent = this.ammo;
             }
 
-            updateCrosshairPosition() {
-                this.crosshair.style.left = `${this.crosshairX}px`;
-                this.crosshair.style.top = `${this.crosshairY}px`;
+            updateCrosshairPosition(playerId) {
+                const state = this.crosshairs[playerId];
+                if (!state) return;
+
+                state.element.style.left = `${state.x}px`;
+                state.element.style.top = `${state.y}px`;
             }
 
-            updateCrosshairFromController(deltaX, deltaY) {
-                this.crosshairX += deltaX;
-                this.crosshairY += deltaY;
+            setCrosshairPosition(playerId, x, y) {
+                const state = this.crosshairs[playerId];
+                if (!state) return;
+
+                state.x = x;
+                state.y = y;
+                this.updateCrosshairPosition(playerId);
+            }
+
+            updateCrosshairFromController(playerId, deltaX, deltaY) {
+                const state = this.crosshairs[playerId];
+                if (!state) return;
 
                 const padding = 20;
-                this.crosshairX = Math.max(padding, Math.min(this.crosshairX, window.innerWidth - padding));
-                this.crosshairY = Math.max(padding, Math.min(this.crosshairY, window.innerHeight - padding));
+                const nextX = state.x + deltaX;
+                const nextY = state.y + deltaY;
+                state.x = Math.max(padding, Math.min(nextX, window.innerWidth - padding));
+                state.y = Math.max(padding, Math.min(nextY, window.innerHeight - padding));
 
-                this.updateCrosshairPosition();
+                this.updateCrosshairPosition(playerId);
             }
 
-            setCrosshairFromAbsolute(x, y) {
+            setCrosshairFromAbsolute(playerId, x, y) {
+                const state = this.crosshairs[playerId];
+                if (!state) return;
+
                 const padding = 20;
-                this.crosshairX = padding + x * (window.innerWidth - padding * 2);
-                this.crosshairY = padding + y * (window.innerHeight - padding * 2);
-                this.updateCrosshairPosition();
+                state.x = padding + x * (window.innerWidth - padding * 2);
+                state.y = padding + y * (window.innerHeight - padding * 2);
+                this.updateCrosshairPosition(playerId);
             }
 
-            shootFromController() {
-                this.shoot(this.crosshairX, this.crosshairY);
+            updateConnectedPlayers(playerIds) {
+                this.activePlayers = new Set(playerIds.length ? playerIds : [1]);
+                [1, 2].forEach((playerId) => {
+                    const state = this.crosshairs[playerId];
+                    if (!state) return;
+                    const visible = this.activePlayers.has(playerId) || playerId === 1;
+                    state.element.style.display = visible ? 'block' : 'none';
+                });
+
+                const amount = playerIds.length;
+                if (amount === 0) {
+                    this.updateConnectionStatus('Wachten op spelers...');
+                } else if (amount === 1) {
+                    this.updateConnectionStatus('1 speler verbonden');
+                } else {
+                    this.updateConnectionStatus('2 spelers verbonden');
+                }
+            }
+
+            shootFromController(playerId) {
+                const state = this.crosshairs[playerId];
+                if (!state) return;
+                this.shoot(state.x, state.y);
             }
 
             playShootSound() {
